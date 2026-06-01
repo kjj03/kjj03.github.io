@@ -1,0 +1,3828 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 기반 맞춤형 문제지 생성 플랫폼 & 티어 시스템</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <!-- Markdown Parser -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- 클라이언트 사이드 파일 리더 라이브러리 (PDF, PPTX 파싱 지원용) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  
+  <style>
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+    }
+    code, pre {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #6366f1;
+    }
+    .prose h1, .prose h2, .prose h3 {
+      color: #f8fafc;
+      font-weight: 700;
+      margin-top: 1rem;
+      margin-bottom: 0.5rem;
+    }
+    .prose p {
+      margin-bottom: 0.75rem;
+      line-height: 1.625;
+      color: #cbd5e1;
+    }
+    .prose ul, .prose ol {
+      margin-left: 1.25rem;
+      margin-bottom: 0.75rem;
+    }
+    .prose code {
+      background-color: #0f172a;
+      padding: 0.125rem 0.25rem;
+      border-radius: 0.25rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: #818cf8;
+    }
+    /* 챌린저 과목 블록 애니메이션 테두리 효과 */
+    @keyframes challengerGlow {
+      0%, 100% { border-color: rgba(245, 158, 11, 0.4); box-shadow: 0 0 15px rgba(245, 158, 11, 0.15); }
+      50% { border-color: rgba(244, 63, 94, 0.8); box-shadow: 0 0 25px rgba(244, 63, 94, 0.35); }
+    }
+    .challenger-active-card {
+      animation: challengerGlow 4s infinite ease-in-out;
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(88, 28, 135, 0.2) 100%);
+    }
+
+    /* 관리자 모드 정답 힌트 효과 */
+    @keyframes goldenGlow {
+      0% { box-shadow: 0 0 5px rgba(250, 204, 21, 0.3); border-color: rgba(250, 204, 21, 0.4); }
+      50% { box-shadow: 0 0 20px rgba(250, 204, 21, 0.8); border-color: rgba(250, 204, 21, 1); }
+      100% { box-shadow: 0 0 5px rgba(250, 204, 21, 0.3); border-color: rgba(250, 204, 21, 0.4); }
+    }
+    .admin-correct-hint {
+      animation: goldenGlow 1.5s infinite ease-in-out;
+      background: linear-gradient(90deg, rgba(250, 204, 21, 0.04) 0%, rgba(250, 204, 21, 0.12) 50%, rgba(250, 204, 21, 0.04) 100%) !important;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between transition-colors duration-300">
+
+  <!-- 헤더 영역 -->
+  <header class="border-b border-slate-800/80 bg-slate-900/90 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+      <div class="flex items-center space-x-3 cursor-pointer" onclick="changeDashboardTab('profile')">
+        <div class="p-2.5 bg-gradient-to-br from-indigo-500 via-purple-600 to-pink-500 rounded-xl text-white shadow-lg shadow-indigo-500/10">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="text-base md:text-lg font-black text-slate-100 tracking-tight bg-gradient-to-r from-slate-100 via-indigo-200 to-purple-300 bg-clip-text text-transparent">AI 랭킹 퀴즈 워크아웃</h1>
+            <span id="sync-status" class="px-2 py-0.5 text-[9px] font-bold rounded-full bg-slate-950 text-slate-400 border border-slate-800 flex items-center space-x-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+              <span>연결 대기 중</span>
+            </span>
+          </div>
+          <p class="text-[10px] text-slate-400 font-semibold tracking-wide">학술 분석 & 멀티 클라우드 연동</p>
+        </div>
+      </div>
+      
+      <!-- 탭 컨트롤러 헤더 버튼 -->
+      <nav class="hidden md:flex space-x-1.5 bg-slate-950 p-1.5 rounded-xl border border-slate-800/60">
+        <button id="tab-btn-profile" onclick="changeDashboardTab('profile')" class="px-3.5 py-2 rounded-lg text-xs font-black transition-all">👤 학습 프로필</button>
+        <button id="tab-btn-subjects" onclick="changeDashboardTab('subjects')" class="px-3.5 py-2 rounded-lg text-xs font-black transition-all">🗂️ 과목 관리</button>
+        <button id="tab-btn-generate" onclick="changeDashboardTab('generate')" class="px-3.5 py-2 rounded-lg text-xs font-black transition-all">✨ 스마트 퀴즈 빌더</button>
+        <button id="tab-btn-storage" onclick="changeDashboardTab('storage')" class="px-3.5 py-2 rounded-lg text-xs font-black transition-all">📚 학업 보관함</button>
+        <button id="tab-btn-settings" onclick="changeDashboardTab('settings')" class="px-3.5 py-2 rounded-lg text-xs font-black transition-all text-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/20">⚙️ 독립 배포 설정</button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- 모바일 하단 플로팅 탭바 -->
+  <div class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur border-t border-slate-800/80 py-2 px-2 flex justify-around shadow-2xl overflow-x-auto">
+    <button onclick="changeDashboardTab('profile')" class="flex flex-col items-center space-y-1 text-slate-400 flex-shrink-0 px-2" id="m-tab-profile">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+      <span class="text-[9px] font-bold">프로필</span>
+    </button>
+    <button onclick="changeDashboardTab('subjects')" class="flex flex-col items-center space-y-1 text-slate-400 flex-shrink-0 px-2" id="m-tab-subjects">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+      <span class="text-[9px] font-bold">과목 관리</span>
+    </button>
+    <button onclick="changeDashboardTab('generate')" class="flex flex-col items-center space-y-1 text-slate-400 flex-shrink-0 px-2" id="m-tab-generate">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+      <span class="text-[9px] font-bold">빌더</span>
+    </button>
+    <button onclick="changeDashboardTab('storage')" class="flex flex-col items-center space-y-1 text-slate-400 flex-shrink-0 px-2" id="m-tab-storage">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2m-4-1v8m0 0l3-3m-3 3L9 8m-5 5h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293h3.172a1 1 0 00.707-.293l2.414-2.414a1 1 0 01.707-.293H20"></path></svg>
+      <span class="text-[9px] font-bold">보관함</span>
+    </button>
+    <button onclick="changeDashboardTab('settings')" class="flex flex-col items-center space-y-1 text-emerald-400 flex-shrink-0 px-2" id="m-tab-settings">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
+      <span class="text-[9px] font-bold">설정</span>
+    </button>
+  </div>
+
+  <!-- 메인 콘텐츠 영역 -->
+  <main class="max-w-6xl w-full mx-auto px-4 py-6 flex-grow flex flex-col justify-start relative mb-16 md:mb-0">
+    
+    <!-- 대시보드 메인 랩퍼 -->
+    <div id="home-view" class="space-y-8">
+      
+      <!-- ==================== 1. 사용자 정보창 TAB ==================== -->
+      <div id="view-profile" class="space-y-6 animate-fadeIn hidden">
+        
+        <!-- 실시간 클라우드 로그인 및 동기화 카드 -->
+        <div class="bg-gradient-to-br from-indigo-950/40 via-purple-950/20 to-slate-900 border border-indigo-500/20 rounded-3xl p-6 md:p-8 flex flex-col lg:flex-row items-center justify-between gap-6 shadow-2xl relative overflow-hidden">
+          <div class="absolute -right-20 -bottom-20 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+          
+          <div class="flex flex-col md:flex-row items-center gap-6 w-full lg:w-auto">
+            <div class="relative flex-shrink-0">
+              <div class="w-20 h-20 rounded-2xl bg-slate-950/90 flex items-center justify-center border border-indigo-500/30 shadow-inner" id="profile-avatar-circle">
+                <span class="text-3xl" id="profile-avatar-emoji">🎓</span>
+              </div>
+            </div>
+
+            <div class="text-center md:text-left space-y-1.5 flex-grow">
+              <div class="flex flex-wrap items-center justify-center md:justify-start gap-2">
+                <span class="px-2.5 py-0.5 text-[9px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-full uppercase tracking-wider">Academic Portfolio</span>
+                <button onclick="toggleAdminMode()" id="admin-toggle-btn" class="px-2.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold rounded-full border border-slate-700 transition-all">
+                  🛠️ 치트 권한
+                </button>
+              </div>
+              <h2 class="text-xl md:text-2xl font-black text-slate-100 flex items-center justify-center md:justify-start gap-2">
+                <span id="profile-user-name">게스트 데이터 과학자</span>
+                <span class="text-sm font-normal text-slate-400" id="profile-user-email"></span>
+              </h2>
+              <p class="text-xs text-slate-400 leading-relaxed max-w-md" id="profile-welcome-msg">
+                개인화된 전공 과목 설계와 AI 연동 승급 퀴즈 시스템을 통해 학업 성취도를 극대화해보세요.
+              </p>
+            </div>
+          </div>
+
+          <!-- 클라우드 연동 패널 -->
+          <div class="w-full lg:w-auto bg-slate-950/60 p-5 rounded-2xl border border-slate-800/80 flex flex-col items-center justify-center space-y-3 min-w-[310px]">
+            <div class="text-center space-y-0.5">
+              <span class="text-[10px] font-bold text-indigo-400 block uppercase tracking-widest">Multi-Device Cloud Sync</span>
+              <p class="text-[9px] text-slate-500" id="sync-sub-desc">iframe 내 구글 인증 거부 시 아래 [보안코드 우회] 버튼을 활용해 기기 간 데이터를 안전하게 백업 및 동기화하세요.</p>
+            </div>
+            
+            <div id="google-auth-panel" class="w-full space-y-2">
+              <!-- JS 동적 렌더링 -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 📅 등록된 통합 학업 일정 일람 -->
+        <div class="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="text-sm font-bold text-slate-200 flex items-center space-x-2">
+              <span>📅</span>
+              <span>다가오는 전공 및 학습 일정 피드</span>
+            </h3>
+            <span class="text-[10px] bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-500/20" id="profile-schedule-count">0개 대기 중</span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="profile-schedule-container">
+            <!-- 동적 주입 -->
+          </div>
+        </div>
+
+        <!-- 🏆 전공 과목 수련 등급 보드 -->
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-base font-bold text-white flex items-center space-x-2">
+              <span class="w-1.5 h-5 bg-indigo-500 rounded-full"></span>
+              <span>🏆 전공별 기계학습 랭크 현황</span>
+            </h3>
+            <span class="text-xs text-indigo-400 font-mono" id="profile-completed-rate-text">평균 학업 도달률: 0%</span>
+          </div>
+
+          <div class="space-y-4" id="subject-accordion-container">
+            <!-- JS 동적 아코디언 매핑 -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ==================== 2. 과목 관리창 TAB ==================== -->
+      <div id="view-subjects" class="space-y-6 animate-fadeIn hidden">
+        
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <!-- 좌측: 과목 생성 및 과목 목록 -->
+          <div class="lg:col-span-4 bg-slate-900/50 border border-slate-800/80 p-5 rounded-2xl space-y-5 shadow-xl">
+            <div class="space-y-1">
+              <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+                <span class="text-lg">📂</span>
+                <span>과목 목록 및 개설</span>
+              </h3>
+              <p class="text-[11px] text-slate-400">데이터 과학 전공 과목을 수립하고 기한별 학습 일정 및 학습 단원 파일을 구조화합니다.</p>
+            </div>
+
+            <div class="space-y-2">
+              <input type="text" id="subj-name-input" placeholder="예: 기계학습 기초 / 딥러닝 응용" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors" />
+              <button onclick="createNewSubject()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl transition-all shadow-md">
+                + 신규 과목 생성
+              </button>
+            </div>
+
+            <div class="border-t border-slate-800/80 pt-4 space-y-2">
+              <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">나의 전공 개설 과목</span>
+              <div class="space-y-2 max-h-[300px] overflow-y-auto pr-1" id="subject-manage-list">
+                <!-- 과목 탭들이 동적으로 렌더링됨 -->
+              </div>
+            </div>
+          </div>
+
+          <!-- 우측: 선택한 과목의 세부 관리 -->
+          <div class="lg:col-span-8 space-y-6">
+            
+            <div id="subject-detail-fallback" class="bg-slate-900/40 border-2 border-dashed border-slate-850 p-20 rounded-2xl text-center text-slate-500 text-xs shadow-inner">
+              왼쪽 개설 과목 목록에서 관리하고 수련할 대상을 클릭해 선택해 주세요.
+            </div>
+
+            <div id="subject-detail-panel" class="hidden space-y-6">
+              
+              <!-- 과목 디테일 헤더 카드 -->
+              <div class="bg-gradient-to-r from-slate-900 to-indigo-950/20 border border-slate-800 p-5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-lg">
+                <div>
+                  <div class="flex items-center space-x-2">
+                    <span class="px-2 py-0.5 text-[9px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded">Active Subject</span>
+                  </div>
+                  <h3 class="text-xl font-black text-white mt-1" id="detail-subject-title">과목 관리 정보</h3>
+                  <p class="text-[11px] text-slate-400 mt-0.5">선택한 과목의 지식을 단원별로 업로드하고, 일정 및 개인 학습 메모를 관리하세요.</p>
+                </div>
+                <button id="delete-subject-btn" class="px-3 py-2 bg-rose-600/10 border border-rose-600/30 hover:bg-rose-600 hover:text-white text-rose-400 text-[10px] font-bold rounded-xl transition-all shadow-sm">
+                  과목 전체 삭제
+                </button>
+              </div>
+
+              <!-- 과목 관리 전용 탭 인터페이스 -->
+              <div class="flex border-b border-slate-800 space-x-2">
+                <button id="sub-tab-btn-chapters" onclick="changeSubDetailTab('chapters')" class="px-4 py-2.5 text-xs font-black border-b-2 transition-all">📂 1. 단원 & 교안 관리</button>
+                <button id="sub-tab-btn-schedules" onclick="changeSubDetailTab('schedules')" class="px-4 py-2.5 text-xs font-black border-b-2 transition-all">📅 2. 시험/과제 일정</button>
+                <button id="sub-tab-btn-memos" onclick="changeSubDetailTab('memos')" class="px-4 py-2.5 text-xs font-black border-b-2 transition-all">📝 3. 전공 노트</button>
+              </div>
+
+              <!-- 3-1) 단원 추가 및 교안 관리 탭 영역 -->
+              <div id="sub-tab-panel-chapters" class="space-y-4 animate-fadeIn hidden">
+                <div class="bg-slate-900/50 border border-slate-800 p-5 rounded-2xl space-y-4">
+                  <div>
+                    <h4 class="text-xs font-black text-indigo-400 uppercase tracking-wider">단원(챕터) 인덱싱 & 교안 문서 탑재</h4>
+                    <p class="text-[11px] text-slate-500 mt-0.5">교과서, 강의 슬라이드, PDF, PPTX 등을 디코딩하여 AI 문제지의 고유 출제 범위 소스로 지정합니다.</p>
+                  </div>
+
+                  <div class="grid grid-cols-1 md:grid-cols-12 gap-5">
+                    <!-- 단원 생성 영역 -->
+                    <div class="md:col-span-5 space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-850">
+                      <div class="space-y-1">
+                        <span class="text-[10px] text-indigo-300 block font-bold">1단계: 단원 이름 명시</span>
+                        <input type="text" id="chap-name-input" placeholder="예: 01. 군집화 기법 개요" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none" />
+                      </div>
+                      
+                      <div class="space-y-2">
+                        <span class="text-[10px] text-indigo-300 block font-bold">2단계: 원문 교안 첨부 (PDF/PPTX/TXT/HTML)</span>
+                        <div class="border-2 border-dashed border-slate-800 hover:border-indigo-500/50 bg-slate-900/40 rounded-lg p-4 transition-all relative flex flex-col items-center justify-center cursor-pointer min-h-[90px]" id="drop-zone-container">
+                          <input type="file" id="gen-file-input" accept=".html,.txt,.pdf,.pptx" class="absolute inset-0 opacity-0 cursor-pointer" />
+                          <span class="text-[10px] text-slate-400 font-medium text-center" id="gen-file-status">드래그 혹은 클릭하여 파일 업로드</span>
+                        </div>
+                        
+                        <div id="file-cancel-panel" class="hidden bg-slate-900 p-2 rounded border border-slate-800 flex justify-between items-center">
+                          <span class="text-[9px] text-slate-300 truncate max-w-[70%]" id="cancel-file-name-label"></span>
+                          <button type="button" onclick="cancelUploadedFile()" class="px-1.5 py-0.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[8px] font-bold rounded">취소</button>
+                        </div>
+                      </div>
+
+                      <button onclick="createNewChapter()" class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-lg shadow transition-all">
+                        교안 인덱싱 완료 및 단원 등록
+                      </button>
+                    </div>
+
+                    <!-- 단원 리스트 영역 -->
+                    <div class="md:col-span-7 space-y-2">
+                      <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">현재 탑재된 챕터 목록</span>
+                      <div class="space-y-1.5 max-h-[250px] overflow-y-auto pr-1" id="chapter-manage-list">
+                        <!-- 동적 주입 -->
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3-2) 시험 및 학업 일정 관리 탭 영역 -->
+              <div id="sub-tab-panel-schedules" class="space-y-4 animate-fadeIn hidden">
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-5">
+                  
+                  <!-- 일정 작성 폼 -->
+                  <div class="md:col-span-5 bg-slate-900/50 border border-slate-800 p-5 rounded-2xl space-y-4">
+                    <span class="text-xs font-black text-indigo-400 flex items-center space-x-1.5">
+                      <span>📅</span>
+                      <span>새로운 학업 및 평가 일정 수립</span>
+                    </span>
+
+                    <div class="space-y-3">
+                      <!-- 유형 분류 -->
+                      <div class="space-y-1">
+                        <label class="text-[10px] text-slate-400 font-bold block">학업 유형 분류</label>
+                        <select id="schedule-type-input" class="w-full bg-slate-950 border border-slate-800 rounded-lg text-xs p-2.5 focus:outline-none focus:border-indigo-500">
+                          <option value="exam">🔥 전공 시험 (중간/기말)</option>
+                          <option value="homework">📝 과제 마감 및 보고서</option>
+                          <option value="study">📚 자체 스터디 및 모의평가</option>
+                        </select>
+                      </div>
+
+                      <!-- 일정 제목 -->
+                      <div class="space-y-1">
+                        <label class="text-[10px] text-slate-400 font-bold block">일정 제목</label>
+                        <input type="text" id="schedule-title-input" placeholder="중간고사 / 실습 보고서 제출 등" class="w-full bg-slate-950 border border-slate-800 rounded-lg text-xs p-2.5 focus:outline-none focus:border-indigo-500" />
+                      </div>
+
+                      <!-- 일정 내용 -->
+                      <div class="space-y-1">
+                        <label class="text-[10px] text-slate-400 font-bold block">상세 세부 지시 사항 / 범위</label>
+                        <textarea id="schedule-desc-input" placeholder="시험 범위: 교재 1장 ~ 4장 수식 증명 포함" rows="2" class="w-full bg-slate-950 border border-slate-800 rounded-lg text-xs p-2.5 focus:outline-none focus:border-indigo-500"></textarea>
+                      </div>
+
+                      <!-- 기한 기입 및 쾌속 프리셋 모듈 -->
+                      <div class="space-y-2">
+                        <label class="text-[10px] text-slate-400 font-bold block">기한 설정 (Due Date)</label>
+                        <input type="date" id="schedule-date-input" class="w-full bg-slate-950 border border-slate-800 rounded-lg text-xs p-2.5 focus:outline-none focus:border-indigo-500" />
+                        
+                        <!-- 기한선택 지능형 가속 프리셋 -->
+                        <div class="space-y-1">
+                          <span class="text-[9px] text-slate-500 font-semibold block">기한 빠른 설정 프리셋 단추</span>
+                          <div class="flex flex-wrap gap-1">
+                            <button onclick="setSchedulePreset(0)" class="px-2 py-1 bg-slate-950 hover:bg-indigo-950 hover:text-indigo-300 text-slate-400 text-[9px] rounded-md border border-slate-800 font-bold transition-all">오늘</button>
+                            <button onclick="setSchedulePreset(1)" class="px-2 py-1 bg-slate-950 hover:bg-indigo-950 hover:text-indigo-300 text-slate-400 text-[9px] rounded-md border border-slate-800 font-bold transition-all">내일</button>
+                            <button onclick="setSchedulePreset(7)" class="px-2 py-1 bg-slate-950 hover:bg-indigo-950 hover:text-indigo-300 text-slate-400 text-[9px] rounded-md border border-slate-800 font-bold transition-all">7일 후 (1주)</button>
+                            <button onclick="setSchedulePreset(14)" class="px-2 py-1 bg-slate-950 hover:bg-indigo-950 hover:text-indigo-300 text-slate-400 text-[9px] rounded-md border border-slate-800 font-bold transition-all">14일 후 (2주)</button>
+                            <button onclick="setSchedulePreset(30)" class="px-2 py-1 bg-slate-950 hover:bg-indigo-950 hover:text-indigo-300 text-slate-400 text-[9px] rounded-md border border-slate-800 font-bold transition-all">30일 후 (1달)</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button onclick="addSubjectSchedule()" class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all shadow-md">
+                      + 신규 일정 등록 확정
+                    </button>
+                  </div>
+
+                  <!-- 일정 렌더링 리스트 -->
+                  <div class="md:col-span-7 bg-slate-900/50 border border-slate-800 p-5 rounded-2xl flex flex-col">
+                    <span class="text-xs font-bold text-slate-300 block mb-3 border-b border-slate-800 pb-2">📂 등록된 일정 피드백 리스트</span>
+                    <div class="space-y-2 flex-grow overflow-y-auto max-h-[350px] pr-1" id="schedule-render-list">
+                      <!-- JS 동적 주입 -->
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- 3-3) 학습 메모(포스트잇) 탭 영역 -->
+              <div id="sub-tab-panel-memos" class="space-y-4 animate-fadeIn hidden">
+                <div class="bg-slate-900/50 border border-slate-800 p-5 rounded-2xl space-y-4">
+                  <span class="text-xs font-bold text-slate-300 flex items-center space-x-1.5">
+                    <span>📝</span>
+                    <span>개인 학습 팁 및 기계학습 증명 공식 메모장</span>
+                  </span>
+
+                  <div class="flex space-x-2">
+                    <input type="text" id="memo-text-input" placeholder="K-Means의 실루엣 값 계산 공식 기입 등..." class="flex-grow bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500" />
+                    <button onclick="addSubjectMemo()" class="px-4 py-2.5 bg-indigo-600 text-white font-bold text-xs rounded-xl transition-all shadow-sm">
+                      메모 등록
+                    </button>
+                  </div>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-1" id="memo-render-list">
+                    <!-- 메모 포스트잇 -->
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ==================== 3. 문제지 생성창 TAB ==================== -->
+      <div id="view-generate" class="hidden space-y-6 animate-fadeIn">
+        
+        <div class="max-w-2xl mx-auto bg-slate-900/50 border border-slate-800/80 p-6 md:p-8 rounded-3xl space-y-6">
+          <div class="space-y-1 border-b border-slate-800 pb-4">
+            <h3 class="text-base font-extrabold text-white flex items-center space-x-2">
+              <span class="w-1.5 h-5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"></span>
+              <span>✨ AI 인터랙티브 퀴즈 빌더</span>
+            </h3>
+            <p class="text-xs text-slate-400">과목 관리창에서 탑재한 전공 데이터를 소스로 삼아 실시간 기계학습 문제를 설계합니다.</p>
+          </div>
+
+          <!-- 대상 과목 및 단원 범위 수동 선택 -->
+          <div class="space-y-4">
+            <!-- 과목 선택 연동 -->
+            <div class="space-y-1.5">
+              <label class="text-xs font-bold text-slate-400">출제 대상 과목</label>
+              <select id="gen-subject-select" onchange="onGenSubjectSelectChange()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer">
+                <!-- 동적 과목 데이터 바인딩 -->
+              </select>
+            </div>
+
+            <!-- 단원 범위 선택 연동 -->
+            <div class="space-y-1.5">
+              <label class="text-xs font-bold text-slate-400">출제 세부 단원</label>
+              <select id="gen-chapter-select" onchange="updateGenerateTypeLock()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer">
+                <!-- 과목 선택에 연동된 단원 목록 -->
+              </select>
+            </div>
+
+            <!-- 수련 모드 지정 -->
+            <div class="space-y-2.5">
+              <label class="text-xs font-bold text-slate-400 block">수련 모드 선택</label>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button id="type-btn-practice" onclick="setGenType('practice')" class="p-4 rounded-xl border-2 transition-all text-left">
+                  <div class="text-xs font-bold text-indigo-400 flex items-center justify-between">
+                    <span>📚 연습문제 모드</span>
+                    <span class="text-[10px] bg-indigo-500/20 px-2 py-0.5 rounded text-indigo-300">10문항</span>
+                  </div>
+                  <p class="text-[10px] text-slate-500 mt-1">즉시 정답 해설 가이드가 활성화됩니다. 경험치 파밍에 용이합니다.</p>
+                </button>
+                <button id="type-btn-real" onclick="setGenType('real')" class="p-4 rounded-xl border transition-all text-left" disabled>
+                  <div class="text-xs font-bold text-slate-500 flex items-center justify-between" id="real-btn-title-lbl">
+                    <span>🔥 실전 관문 승급 평가</span>
+                    <span class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-600" id="real-btn-count-lbl">20문항</span>
+                  </div>
+                  <p class="text-[10px] text-slate-500 mt-1">자가 채점 전 해설이 은닉됩니다. 랭크 자격 시험 대용입니다.</p>
+                </button>
+              </div>
+              <p class="text-[10px] text-slate-500 leading-relaxed" id="real-type-alert-text">※ 해당 챕터의 연습 경험치를 모두 충족하면 실전 승급 자격 평가 모드가 오픈됩니다.</p>
+            </div>
+          </div>
+
+          <!-- 빌드 트리거 실행기 -->
+          <button id="build-quiz-btn" class="w-full py-3.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-extrabold rounded-xl shadow-lg transition-all flex items-center justify-center space-x-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            <span id="build-btn-text">✨ AI 문제지 10문항 즉시 빌드</span>
+          </button>
+
+          <!-- 로딩 위젯 -->
+          <div id="gen-loading-spinner" class="hidden bg-slate-950 p-6 rounded-2xl border border-slate-800 flex flex-col items-center justify-center text-center space-y-3">
+            <div class="relative w-10 h-10">
+              <div class="absolute inset-0 rounded-full border-4 border-indigo-500/20"></div>
+              <div class="absolute inset-0 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin"></div>
+            </div>
+            <div>
+              <p class="text-xs font-bold text-indigo-400" id="gen-spinner-main-txt">교안 분석 기획 중...</p>
+              <p class="text-[10px] text-slate-500 leading-relaxed mt-1">교안 외부 지식 완벽 차단 필터 인덱싱 가동 중 (약 10초 소요)</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ==================== 4. 문제지 보관함 TAB ==================== -->
+      <div id="view-storage" class="hidden space-y-6 animate-fadeIn">
+        
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          <!-- 좌측 과목 선택 사이드바 -->
+          <div class="lg:col-span-3 bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4 space-y-3">
+            <h4 class="text-xs font-black text-indigo-400 uppercase tracking-wider px-2">과목 대분류</h4>
+            <div class="space-y-1.5" id="storage-subject-list">
+              <!-- 과목 목록 -->
+            </div>
+          </div>
+
+          <!-- 우측 컨텐츠 영역 -->
+          <div class="lg:col-span-9 space-y-6">
+            <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/60 flex items-center space-x-2 overflow-x-auto" id="storage-chapter-tabs-bar">
+              <!-- 챕터 탭 버튼 -->
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="storage-sheets-grid">
+              <!-- JS 동적 카드 렌더링 -->
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- ==================== 5. 설정(Settings) 및 공유 가이드 TAB ==================== -->
+      <div id="view-settings" class="hidden space-y-6 animate-fadeIn">
+        <div class="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          <!-- 좌측: 자격 증명 설정 폼 -->
+          <div class="lg:col-span-6 bg-slate-900/40 border border-slate-800 p-6 rounded-2xl space-y-6">
+            <div>
+              <h3 class="text-sm font-black text-emerald-400 uppercase tracking-wider flex items-center space-x-1.5">
+                <span>⚙️</span>
+                <span>독립 서비스 가동을 위한 고유 API 자격 설정</span>
+              </h3>
+              <p class="text-[11px] text-slate-400 mt-1">이 브라우저 쿠키(localStorage) 영역에 본인 전용 자격증명을 입력하면 제미나이 캔버스 플랫폼 밖에서도 완벽히 단독 웹 앱으로 구동됩니다.</p>
+            </div>
+
+            <div class="space-y-4">
+              <!-- Gemini API Key -->
+              <div class="space-y-1.5">
+                <div class="flex justify-between items-center">
+                  <label class="text-[10px] text-slate-300 font-bold">나의 Google Gemini API Key</label>
+                  <a href="https://aistudio.google.com/" target="_blank" class="text-[9px] text-indigo-400 font-bold hover:underline">API 키 무료 발급 받기 →</a>
+                </div>
+                <div class="relative">
+                  <input type="password" id="custom-gemini-key-input" placeholder="AI Studio에서 발급 받은 AIzaSy... 입력" class="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 focus:outline-none transition-colors" />
+                  <button type="button" onclick="togglePasswordVisibility('custom-gemini-key-input')" class="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300 text-xs font-bold font-mono">SHOW</button>
+                </div>
+              </div>
+
+              <!-- Firebase Config -->
+              <div class="space-y-1.5">
+                <label class="text-[10px] text-slate-300 font-bold block">나의 Firebase JSON Config (선택사항)</label>
+                <textarea id="custom-firebase-config-input" rows="5" placeholder='{"apiKey": "...", "authDomain": "...", "projectId": "...", "storageBucket": "...", "messagingSenderId": "...", "appId": "..."}' class="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl p-3 text-[10px] font-mono text-slate-200 focus:outline-none transition-colors"></textarea>
+                <p class="text-[9px] text-slate-500 leading-relaxed">공백 시 기본 제공되는 내부 프리셋 파이어베이스 계정으로 클라우드 저장이 우회 작동합니다.</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 pt-2">
+              <button onclick="saveCustomCredentials()" class="py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl shadow-lg transition-all">
+                설정 일괄 보존 저장
+              </button>
+              <button onclick="clearCustomCredentials()" class="py-2.5 bg-slate-950 border border-slate-800 text-slate-400 font-black text-xs rounded-xl transition-all hover:bg-slate-900">
+                초기화 (Canvas 기본값 복귀)
+              </button>
+            </div>
+          </div>
+
+          <!-- 우측: 배포 공유용 가이드 북 -->
+          <div class="lg:col-span-6 bg-slate-900/20 border border-slate-800/60 p-6 rounded-2xl space-y-6">
+            <div>
+              <span class="px-2.5 py-0.5 text-[9px] font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded">Deploy Manual</span>
+              <h3 class="text-base font-black text-white mt-1.5">이 사이트를 외부에 독립 배포하고 공유하는 법</h3>
+              <p class="text-[11px] text-slate-400 mt-1">이 웹 서비스는 단 하나의 HTML 파일로 완결 설계되어 있어, 타인에게 무료로 쉽고 가볍게 호스팅하여 서비스할 수 있습니다.</p>
+            </div>
+
+            <div class="space-y-4 text-xs text-slate-300">
+              <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-850 space-y-2">
+                <h4 class="font-bold text-slate-200">1. GitHub Pages로 1분 무료 호스팅하기</h4>
+                <ol class="list-decimal pl-4 space-y-1 text-[11px] text-slate-400">
+                  <li>전체 HTML 코드를 복사하여 내 PC에 <code class="text-indigo-400 bg-indigo-500/5 px-1 py-0.5 rounded font-mono">index.html</code> 이름의 파일로 저장합니다.</li>
+                  <li>본인의 깃허브(GitHub) 계정에 새 레포지토리(Repository)를 개설합니다.</li>
+                  <li>방금 저장한 <code class="text-indigo-400 bg-indigo-500/5 px-1 py-0.5 rounded font-mono">index.html</code> 파일을 해당 저장소에 그대로 업로드합니다.</li>
+                  <li>저장소 설정(Settings) -> <strong class="text-slate-300">Pages</strong> 탭에서 소스를 <strong class="text-slate-300">Deploy from a branch</strong>로 선택하고 브랜치를 <strong class="text-indigo-400">main</strong>(혹은 master)으로 저장합니다.</li>
+                  <li>잠시 후 부여되는 고유 <code class="text-emerald-400 font-mono">github.io</code> 주소 링크로 친구들과 함께 접속하면 실시간 작동이 개시됩니다!</li>
+                </ol>
+              </div>
+
+              <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-850 space-y-2">
+                <h4 class="font-bold text-slate-200">2. 외부 구글 로그인 불가 오류 해결하기 (중요)</h4>
+                <p class="text-[11px] text-slate-400 leading-relaxed">
+                  본인의 Firebase 계정을 연동해 구글 계정 동기화를 외부 도메인에 적용하고 싶다면, 파이어베이스 콘솔(<a href="https://console.firebase.google.com/" target="_blank" class="text-indigo-400 underline">console.firebase.google.com</a>) -> <strong class="text-slate-300">Authentication</strong> -> <strong class="text-slate-300">Settings</strong> -> <strong class="text-slate-300">Authorized Domains</strong> 목록에 본인이 배포한 사이트 도메인(예: <code class="text-slate-300 font-mono">my-site.github.io</code>)을 직접 추가해 줘야 구글 인증 거부 에러가 나지 않고 정상 동작합니다.
+                </p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ==================== 6. 퀴즈 풀이 전용 공간 ==================== -->
+    <div id="quiz-view" class="hidden space-y-6 animate-fadeIn">
+      
+      <!-- 상단 네비게이션 대시보드 리본 -->
+      <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-800/80 flex flex-col space-y-4">
+        <div class="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3">
+          <div class="flex items-center space-x-3">
+            <span class="text-sm font-bold text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-md" id="question-index-label">Q. 01</span>
+            <span class="text-xs font-semibold text-slate-400 bg-slate-800 px-2 py-1 rounded-md" id="category-label">비지도 학습 기초</span>
+          </div>
+          
+          <div class="text-xs font-bold text-slate-400 flex items-center justify-between md:justify-end gap-3 flex-grow">
+            <span id="quiz-title-label" class="text-slate-400 font-semibold truncate max-w-[200px]">기본 자가진단</span>
+            <div class="flex items-center space-x-2">
+              <span id="progress-text" class="text-indigo-400 font-mono text-sm">0% 완료</span>
+              <button id="admin-auto-solve-btn" onclick="adminSubmitAllCorrect()" class="hidden px-2.5 py-1 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-slate-950 text-[10px] font-black rounded shadow transition-all">
+                ⚡ 만점 일괄제출 (치트)
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="border-t border-slate-800/80 pt-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 overflow-x-auto py-1">
+          <div class="flex items-center space-x-2">
+            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider hidden sm:inline">문항 이동:</span>
+            <div class="flex items-center space-x-1.5 overflow-x-auto max-w-[320px] sm:max-w-[450px]" id="nav-num-container"></div>
+            <div class="flex items-center space-x-1">
+              <button onclick="navigatePrev()" class="p-1.5 bg-slate-800 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+              </button>
+              <button onclick="navigateNext()" class="p-1.5 bg-slate-800 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 문제 출력 카드 -->
+      <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-6 md:p-8 shadow-xl space-y-6">
+        <div class="space-y-3">
+          <h3 id="question-text" class="text-lg md:text-xl font-bold text-white leading-relaxed">질문 텍스트 공간</h3>
+          <div id="question-box" class="hidden bg-slate-950 border border-slate-800 p-4 rounded-xl font-mono text-sm leading-relaxed text-slate-300 whitespace-pre-line">문제 보강 텍스트</div>
+        </div>
+
+        <div class="space-y-3" id="options-container"></div>
+
+        <div id="feedback-box" class="hidden rounded-xl p-5 border transition-all duration-300">
+          <div class="flex flex-col space-y-4">
+            <div class="flex items-start space-x-3">
+              <div id="feedback-icon-container" class="p-1 rounded-full text-white mt-0.5"></div>
+              <div class="space-y-1 flex-grow">
+                <h4 id="feedback-title" class="font-bold text-base">채점 완료</h4>
+                <p id="explanation-text" class="text-sm leading-relaxed text-slate-300">자세한 해설</p>
+              </div>
+            </div>
+
+            <div class="border-t border-slate-800 pt-4 flex flex-col space-y-3">
+              <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <p class="text-xs text-slate-400">교안의 수학적 배경이나 심화 증명이 더 알고 싶으신가요?</p>
+                <button id="ai-mentor-btn" class="px-3 py-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-xs font-bold text-white rounded-lg flex items-center space-x-1.5 transition-all">
+                  <span>✨ AI 튜터 상세 설명</span>
+                </button>
+              </div>
+              <div id="ai-quiz-response-panel" class="hidden bg-slate-950/80 border border-violet-500/20 rounded-xl p-4 text-sm space-y-2 relative max-h-[300px] overflow-y-auto animate-slideUp">
+                <div class="flex items-center space-x-2 text-violet-400 font-bold text-xs mb-1">
+                  <span class="w-2.5 h-2.5 rounded-full bg-violet-400 animate-pulse"></span>
+                  <span>✨ Gemini AI 튜터 코멘트</span>
+                </div>
+                <div id="ai-quiz-response-content" class="prose text-slate-300 font-sans text-xs"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-between items-center pt-2 border-t border-slate-800/60">
+          <button onclick="navigatePrev()" class="px-4 py-2 bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs font-bold rounded-lg transition-colors">이전 문제</button>
+          <button id="action-btn" disabled class="px-6 py-3 bg-slate-700 text-slate-400 font-bold rounded-xl transition-all duration-150 cursor-not-allowed">답안을 선택하세요</button>
+          <button id="next-btn-text" class="px-4 py-2 text-xs font-bold rounded-lg transition-colors">다음 문제</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 7. 최종 진단 리포트 공간 ==================== -->
+    <div id="result-view" class="hidden space-y-6 animate-fadeIn">
+      <div class="bg-gradient-to-br from-indigo-900/60 to-slate-800/60 border border-indigo-500/20 rounded-2xl p-8 text-center space-y-6 shadow-2xl relative overflow-hidden">
+        <div class="absolute inset-0 bg-indigo-500/5 mix-blend-color-dodge pointer-events-none"></div>
+        <div class="space-y-2">
+          <span class="px-3 py-1 text-xs font-semibold bg-indigo-400/20 text-indigo-300 rounded-full border border-indigo-400/30">종합 진단 분석 결과</span>
+          <h2 class="text-3xl font-black text-white" id="result-quiz-title">학습 진단 리포트</h2>
+          <p class="text-slate-400 text-sm max-w-md mx-auto" id="result-quiz-subtitle">교안 내용 기반의 정확한 학업 성취 기준 판단 결과입니다.</p>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-10 py-4">
+          <div class="relative w-32 h-32 flex items-center justify-center bg-slate-950/60 rounded-full border-4 border-indigo-500/30">
+            <div class="text-center">
+              <span id="final-score" class="text-4xl font-extrabold text-white">0</span>
+              <span id="final-total" class="text-slate-500 font-bold">/10</span>
+            </div>
+          </div>
+          <div class="text-center sm:text-left space-y-2">
+            <div class="text-xs text-slate-500 font-bold uppercase">성취 등급 기준</div>
+            <div id="grade-badge" class="inline-block px-4 py-1.5 rounded-lg text-lg font-black tracking-wider"></div>
+            <p id="grade-desc" class="text-slate-400 text-sm max-w-xs leading-relaxed font-medium">가이드라인 문구</p>
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row justify-center gap-4">
+          <button onclick="changeDashboardTab('storage')" class="px-5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl border border-slate-700 transition-colors duration-150">문제지 보관함으로 이동</button>
+          <button id="ai-prescription-btn" class="px-5 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center space-x-2">
+            <span>✨ AI 맞춤형 학습 처방전 받기</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="ai-prescription-panel" class="hidden bg-slate-900 border border-violet-500/30 rounded-2xl p-6 md:p-8 space-y-4 shadow-xl animate-fadeIn">
+        <h3 class="text-lg font-bold text-white flex items-center space-x-2 border-b border-slate-850 pb-3">
+          <span class="w-1.5 h-6 bg-gradient-to-b from-violet-500 to-indigo-500 rounded-full"></span>
+          <span>✨ Gemini AI 맞춤형 피드백 처방전</span>
+        </h3>
+        <div id="ai-prescription-content" class="prose text-slate-300 text-sm leading-relaxed"></div>
+      </div>
+
+      <div class="bg-slate-900/50 border border-slate-800/80 rounded-2xl p-6 md:p-8 space-y-6 shadow-xl" id="category-analysis-panel">
+        <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+          <span class="w-1.5 h-6 bg-indigo-500 rounded-full"></span>
+          <span>영역별 핵심 강약점 진단</span>
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="category-analysis-container"></div>
+      </div>
+
+      <div class="bg-slate-900/50 border border-slate-800/80 rounded-2xl p-6 md:p-8 space-y-6 shadow-xl">
+        <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+          <span class="w-1.5 h-6 bg-purple-500 rounded-full"></span>
+          <span>오답 일람 및 복습 가이드</span>
+        </h3>
+        <div class="divide-y divide-slate-800 space-y-4" id="review-list"></div>
+      </div>
+    </div>
+
+    <!-- 실시간 AI 튜터 챗봇 위젯 -->
+    <div id="ai-chatbot-widget" class="fixed bottom-6 right-6 z-50">
+      <button id="chatbot-toggle-btn" class="w-14 h-14 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 rounded-full shadow-2xl flex items-center justify-center transition-all transform hover:scale-105">
+        <span class="absolute -top-1.5 -right-1.5 px-2 py-0.5 text-[10px] bg-rose-500 font-extrabold rounded-full border border-slate-900 text-white animate-bounce">AI</span>
+        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+      </button>
+
+      <div id="chatbot-window" class="hidden absolute bottom-16 right-0 w-80 sm:w-96 h-[450px] bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-slideUp">
+        <div class="bg-gradient-to-r from-violet-800 to-indigo-800 p-4 flex justify-between items-center text-white">
+          <div class="flex items-center space-x-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <div>
+              <h4 class="text-sm font-bold">✨ 실시간 AI 전공 튜터</h4>
+              <p class="text-[10px] text-indigo-200">기계학습 및 데이터 마이닝 무엇이든 물어보세요!</p>
+            </div>
+          </div>
+          <button id="chatbot-close-btn" class="text-indigo-200 hover:text-white transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
+
+        <div id="chatbot-messages" class="flex-grow p-4 overflow-y-auto space-y-3 bg-slate-950/50">
+          <div class="flex items-start space-x-2">
+            <div class="w-7 h-7 bg-indigo-600 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white">AI</div>
+            <div class="bg-slate-800 rounded-xl p-3 text-xs max-w-[80%] leading-relaxed text-slate-300">
+              학습 중이신 단원의 난해한 공식이나, 인덱싱된 교안 지식을 실시간으로 풀이 해설해 드립니다! 👩‍💻
+            </div>
+          </div>
+        </div>
+
+        <form id="chatbot-input-form" class="border-t border-slate-800 p-3 bg-slate-900/90 flex space-x-2">
+          <input id="chatbot-input" type="text" placeholder="질문을 입력하세요..." class="flex-grow bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none transition-colors" />
+          <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl px-4 py-2 text-xs transition-colors flex items-center justify-center">전송</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- 간이 키 기반 복구 모달 (unauthorized-domain 구글 오류 우회용) -->
+    <div id="passcode-sync-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+      <div class="bg-slate-900 border border-slate-800 max-w-sm w-full rounded-2xl p-6 shadow-2xl text-left space-y-4 animate-scaleUp">
+        <h4 class="text-base font-black text-white flex items-center space-x-2">
+          <span>🗝️</span>
+          <span>간이 동기화 보안코드 인증</span>
+        </h4>
+        <p class="text-[11px] text-slate-400 leading-relaxed">
+          구글 도메인 인증 오류 시 보안코드를 생성/입력하여 멀티 디바이스 간 데이터를 백업 및 복원할 수 있습니다.
+        </p>
+        
+        <div class="space-y-2 bg-slate-950 p-3 rounded-lg border border-slate-850">
+          <div class="flex justify-between items-center">
+            <span class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">내 고유 디바이스 코드</span>
+            <button onclick="generateDevicePasscode()" class="text-[9px] text-indigo-400 font-bold hover:underline">새로 생성</button>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-mono font-bold text-emerald-400" id="my-device-passcode">미등록 (생성 필요)</span>
+            <button onclick="copyDevicePasscode()" class="text-[9px] bg-slate-800 text-slate-300 px-2 py-1 rounded border border-slate-700">복사</button>
+          </div>
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="text-[10px] font-bold text-slate-400 block">다른 기기 코드 불러오기</label>
+          <div class="flex space-x-2">
+            <input type="text" id="target-passcode-input" placeholder="코드 입력" class="flex-grow bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-white" />
+            <button onclick="loadFromTargetPasscode()" class="px-3 py-1 bg-indigo-600 text-white font-bold text-xs rounded-lg hover:bg-indigo-500">불러오기</button>
+          </div>
+        </div>
+
+        <div class="flex justify-between pt-2">
+          <button onclick="saveCurrentDataToPasscode()" class="px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 rounded-lg text-xs font-bold transition-all">현재 데이터 백업</button>
+          <button onclick="closePasscodeModal()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold transition-all">닫기</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 앱 내 전용 커스텀 모달 알림창 -->
+    <div id="custom-alert" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div class="bg-slate-900 border border-slate-800 max-w-sm w-full rounded-2xl p-6 shadow-2xl text-center space-y-4 animate-scaleUp">
+        <div class="w-12 h-12 bg-indigo-500/10 text-indigo-400 rounded-full flex items-center justify-center mx-auto">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+        </div>
+        <div class="space-y-1.5">
+          <h4 class="text-base font-bold text-white" id="alert-title">알림</h4>
+          <p class="text-xs text-slate-400 leading-relaxed text-center whitespace-pre-line" id="alert-message">메시지 내용입니다.</p>
+        </div>
+        <button onclick="closeAlert()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-colors">
+          확인
+        </button>
+      </div>
+    </div>
+
+    <!-- 커스텀 확인(Confirm) 모달창 -->
+    <div id="custom-confirm" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+      <div class="bg-slate-900 border border-slate-800 max-w-sm w-full rounded-2xl p-6 shadow-2xl text-center space-y-4 animate-scaleUp">
+        <div class="w-12 h-12 bg-rose-500/10 text-rose-500 rounded-full flex items-center justify-center mx-auto">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+        </div>
+        <div class="space-y-1.5">
+          <h4 class="text-base font-bold text-white" id="confirm-title">확인</h4>
+          <p class="text-xs text-slate-400 leading-relaxed text-center" id="confirm-message">내용입니다.</p>
+        </div>
+        <div class="flex space-x-3">
+          <button id="confirm-cancel-btn" onclick="closeConfirmModal()" class="w-1/2 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl transition-colors">
+            취소
+          </button>
+          <button id="confirm-ok-btn" class="w-1/2 py-2.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl transition-colors">
+            확인
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="border-t border-slate-850 py-6 bg-slate-950 text-center text-xs text-slate-500 font-mono">
+    <div class="max-w-6xl mx-auto px-4 space-y-1">
+      <p>© 2026. AI 기반 지능형 퀴즈 워크아웃 & 전공 과목 수련 시스템.</p>
+      <p class="text-[10px] text-slate-600">PDF·PPTX 브라우저 실시간 해석 및 클라우드 동기화 모듈 활성화</p>
+    </div>
+  </footer>
+
+  <!-- Firebase 및 주요 스크립트 모듈 통합 -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // 기본 Sandbox Runtime Key
+    const apiKey = "";
+
+    // 🔑 사용자 정의 API Key & Firebase 인증 정보 반환 함수
+    function getApiKey() {
+      const storedKey = localStorage.getItem("custom_gemini_api_key");
+      if (storedKey && storedKey.trim().length > 0) {
+        return storedKey.trim();
+      }
+      return typeof apiKey !== 'undefined' ? apiKey : "";
+    }
+
+    // PDF.js 워커 CDN 가속
+    let pdfjsLib = window['pdfjs-dist/build/pdf'];
+    if (pdfjsLib) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+
+    // Firebase 글로벌 정보 및 Dynamic Config 라우팅
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    let db = null;
+    let auth = null;
+    let currentUser = null;
+    let isFirebaseInitialized = false;
+
+    // 사용자 수동 config 로드 시도 -> 실패 시 Canvas 기본 환경 로드
+    let firebaseConfig = null;
+    const storedFbConfig = localStorage.getItem("custom_firebase_config");
+    if (storedFbConfig) {
+      try {
+        firebaseConfig = JSON.parse(storedFbConfig);
+      } catch (e) {
+        console.error("수동 Firebase 설정 파싱 에러:", e);
+      }
+    }
+
+    if (!firebaseConfig && typeof __firebase_config !== 'undefined' && __firebase_config) {
+      try {
+        firebaseConfig = JSON.parse(__firebase_config);
+      } catch (e) {
+        console.error("Canvas 기본 Firebase 설정 파싱 에러:", e);
+      }
+    }
+
+    if (firebaseConfig) {
+      try {
+        const app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+        isFirebaseInitialized = true;
+      } catch (e) {
+        console.error("Firebase 초기화 에러:", e);
+      }
+    }
+
+    // 개별 챕터의 랭크는 최대 마스터(Master)까지만 도달
+    const RANKS = ["Unrank", "브론즈", "실버", "골드", "플레티넘", "다이아", "마스터"];
+    const TIER_COLORS = {
+      "Unrank": "text-slate-400 bg-slate-900 border-slate-800",
+      "브론즈": "text-orange-500 bg-orange-950/20 border-orange-500/30",
+      "실버": "text-slate-300 bg-slate-800/30 border-slate-700/50",
+      "골드": "text-amber-500 bg-amber-950/20 border-amber-500/30",
+      "플레티넘": "text-emerald-400 bg-emerald-950/20 border-emerald-400/30",
+      "다이아": "text-cyan-400 bg-cyan-950/20 border-cyan-400/30",
+      "마스터": "text-fuchsia-400 bg-fuchsia-950/20 border-fuchsia-400/30"
+    };
+
+    const TIER_EMOJIS = {
+      "Unrank": "🌱",
+      "브론즈": "🥉",
+      "실버": "🥈",
+      "골드": "🥇",
+      "플레티넘": "💎",
+      "다이아": "🔮",
+      "마스터": "👑",
+      "챌린저": "🏆"
+    };
+
+    const categoryMapping = {
+      "개념 검증": "개념 검증",
+      "k-평균": "k-평균 클러스터링",
+      "평가지표 마스터": "실루엣 평가지표",
+      "DBSCAN": "밀도 기반 DBSCAN",
+      "알고리즘 비교": "밀도/거리 비교",
+      "준지도 학습": "준지도 학습 응용",
+      "가우스 혼합 모델": "가우스 혼합(GMM)"
+    };
+
+    // 상태 저장 스키마
+    let studySubjects = {}; 
+    let studyMaterials = {}; 
+    let openedSubjects = {};
+    let subjectChallengerState = {};
+    let chaptersState = {};
+    let quizSheets = [];
+    let customPasscode = ""; 
+
+    let selectedManageSubjectId = null; 
+    let activeSubDetailTab = "chapters"; 
+
+    let activeFilterSubject = "ALL";
+    let activeFilterChapter = "ALL";
+
+    let activeTab = "profile";
+    let selectedGenType = "practice"; 
+    let genFileContent = "";
+    let activeSheet = null;
+    let currentQuestionIndex = 0;
+    let tempAnswers = [];
+    
+    let isAdminMode = false;
+    let onConfirmSuccess = null;
+
+    // DOM 요소
+    let homeView, quizView, resultView, customAlert, alertTitle, alertMessage;
+    let questionIndexLabel, categoryLabel, quizTitleLabel, progressText;
+    let navNumContainer, questionText, questionBox, optionsContainer;
+    let feedbackBox, feedbackIconContainer, feedbackTitle, explanationText;
+    let aiMentorBtn, aiQuizResponsePanel, aiQuizResponseContent;
+    let actionBtn, nextBtnText;
+    let aiPrescriptionBtn, aiPrescriptionPanel, aiPrescriptionContent;
+    let categoryAnalysisContainer, reviewList;
+    let chatbotToggleBtn, chatbotWindow, chatbotCloseBtn, chatbotMessages, chatbotInputForm, chatbotInput;
+
+    function initDOMElements() {
+      homeView = document.getElementById('home-view');
+      quizView = document.getElementById('quiz-view');
+      resultView = document.getElementById('result-view');
+      customAlert = document.getElementById('custom-alert');
+      alertTitle = document.getElementById('alert-title');
+      alertMessage = document.getElementById('alert-message');
+
+      questionIndexLabel = document.getElementById('question-index-label');
+      categoryLabel = document.getElementById('category-label');
+      quizTitleLabel = document.getElementById('quiz-title-label');
+      progressText = document.getElementById('progress-text');
+      navNumContainer = document.getElementById('nav-num-container');
+      questionText = document.getElementById('question-text');
+      questionBox = document.getElementById('question-box');
+      optionsContainer = document.getElementById('options-container');
+
+      feedbackBox = document.getElementById('feedback-box');
+      feedbackIconContainer = document.getElementById('feedback-icon-container');
+      feedbackTitle = document.getElementById('feedback-title');
+      explanationText = document.getElementById('explanation-text');
+
+      aiMentorBtn = document.getElementById('ai-mentor-btn');
+      aiQuizResponsePanel = document.getElementById('ai-quiz-response-panel');
+      aiQuizResponseContent = document.getElementById('ai-quiz-response-content');
+
+      actionBtn = document.getElementById('action-btn');
+      nextBtnText = document.getElementById('next-btn-text');
+
+      aiPrescriptionBtn = document.getElementById('ai-prescription-btn');
+      aiPrescriptionPanel = document.getElementById('ai-prescription-panel');
+      aiPrescriptionContent = document.getElementById('ai-prescription-content');
+
+      categoryAnalysisContainer = document.getElementById('category-analysis-container');
+      reviewList = document.getElementById('review-list');
+
+      chatbotToggleBtn = document.getElementById('chatbot-toggle-btn');
+      chatbotWindow = document.getElementById('chatbot-window');
+      chatbotCloseBtn = document.getElementById('chatbot-close-btn');
+      chatbotMessages = document.getElementById('chatbot-messages');
+      chatbotInputForm = document.getElementById('chatbot-input-form');
+      chatbotInput = document.getElementById('chatbot-input');
+    }
+
+    // ==================== [공통 유틸리티 모달 함수 등록] ====================
+    window.openAlert = function(title, message) {
+      const alertEl = document.getElementById('custom-alert');
+      const titleEl = document.getElementById('alert-title');
+      const msgEl = document.getElementById('alert-message');
+      if (alertEl && titleEl && msgEl) {
+        titleEl.textContent = title;
+        msgEl.textContent = message;
+        alertEl.classList.remove('hidden');
+      }
+    };
+
+    window.closeAlert = function() {
+      const alertEl = document.getElementById('custom-alert');
+      if (alertEl) {
+        alertEl.classList.add('hidden');
+      }
+    };
+
+    // Gemini API 비동기 네트워크 통신 헬퍼 모듈 (지수 백오프 및 스키마 검증 설계 준수)
+    async function callGemini(promptText, systemPromptText = "", isJson = false) {
+      const currentApiKey = getApiKey();
+      if (!currentApiKey) {
+        throw new Error("API Key 정보가 부재합니다. '⚙️ 독립 배포 설정' 탭에서 Gemini API Key를 발급받아 명시해 주세요!");
+      }
+      
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${currentApiKey}`;
+      
+      const payload = {
+        contents: [{ parts: [{ text: promptText }] }]
+      };
+      
+      if (systemPromptText) {
+        payload.systemInstruction = { parts: [{ text: systemPromptText }] };
+      }
+      
+      if (isJson) {
+        payload.generationConfig = {
+          responseMimeType: "application/json",
+          responseSchema: { 
+            type: "OBJECT",
+            properties: {
+              title: { type: "STRING" },
+              questions: {
+                type: "ARRAY",
+                items: {
+                  type: "OBJECT",
+                  properties: {
+                    question: { type: "STRING" },
+                    boxText: { type: "STRING" },
+                    options: {
+                      type: "ARRAY",
+                      items: { type: "STRING" }
+                    },
+                    answer: { type: "INTEGER" },
+                    explanation: { type: "STRING" },
+                    category: { type: "STRING" }
+                  },
+                  required: ["question", "options", "answer", "explanation"]
+                }
+              }
+            },
+            required: ["questions"]
+          }
+        };
+      }
+
+      const maxRetries = 5;
+      let delay = 1000;
+
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP status ${response.status}`);
+          }
+
+          const result = await response.json();
+          const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (!text) {
+            throw new Error("Gemini API가 빈 응답을 반환했습니다.");
+          }
+          return text;
+        } catch (error) {
+          if (attempt === maxRetries) {
+            throw new Error(`Gemini API 통신 장애 (최종 실패): ${error.message}`);
+          }
+          await new Promise(resolve => setTimeout(resolve, delay));
+          delay *= 2; 
+        }
+      }
+    }
+
+    // 로컬 스토리지 연동 백업용 함수
+    function loadStorageFromLocal() {
+      const storedSubjects = localStorage.getItem("studySubjects_v6");
+      if (storedSubjects) studySubjects = JSON.parse(storedSubjects);
+
+      const storedMaterials = localStorage.getItem("studyMaterials_v6");
+      if (storedMaterials) studyMaterials = JSON.parse(storedMaterials);
+
+      const storedSheets = localStorage.getItem("quizSheets_v6");
+      if (storedSheets) quizSheets = JSON.parse(storedSheets);
+
+      const storedStates = localStorage.getItem("chaptersState_v6");
+      if (storedStates) chaptersState = JSON.parse(storedStates);
+
+      const storedChallenger = localStorage.getItem("subjectChallengerState_v6");
+      if (storedChallenger) subjectChallengerState = JSON.parse(storedChallenger);
+
+      const storedPasscode = localStorage.getItem("customPasscode_v6");
+      if (storedPasscode) customPasscode = storedPasscode;
+    }
+
+    function saveStorageToLocal() {
+      localStorage.setItem("studySubjects_v6", JSON.stringify(studySubjects));
+      localStorage.setItem("studyMaterials_v6", JSON.stringify(studyMaterials));
+      localStorage.setItem("quizSheets_v6", JSON.stringify(quizSheets));
+      localStorage.setItem("chaptersState_v6", JSON.stringify(chaptersState));
+      localStorage.setItem("subjectChallengerState_v6", JSON.stringify(subjectChallengerState));
+      localStorage.setItem("customPasscode_v6", customPasscode);
+    }
+
+    // 클라우드 저장소 연동 (RULE 1, RULE 3 준수)
+    async function saveToFirestore() {
+      if (!isFirebaseInitialized || !currentUser) {
+        saveStorageToLocal();
+        return;
+      }
+      try {
+        updateSyncStatus('saving');
+        const userId = currentUser.uid;
+        
+        await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'progressData', 'subjects'), studySubjects);
+        await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'progressData', 'materials'), studyMaterials);
+        await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'progressData', 'chapters'), chaptersState);
+        await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'progressData', 'challenger'), subjectChallengerState);
+        await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'progressData', 'sheets'), { list: quizSheets });
+        await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'progressData', 'passcode'), { code: customPasscode });
+        
+        saveStorageToLocal();
+        updateSyncStatus('synced');
+      } catch (e) {
+        console.error("클라우드 자동 저장 장애:", e);
+        updateSyncStatus('local');
+      }
+    }
+
+    // 클라우드 데이터 다운로드 및 병합 동기화
+    async function loadDataFromFirestore(userId) {
+      try {
+        updateSyncStatus('connecting');
+        const subSnap = await getDoc(doc(db, 'artifacts', appId, 'users', userId, 'progressData', 'subjects'));
+        const matSnap = await getDoc(doc(db, 'artifacts', appId, 'users', userId, 'progressData', 'materials'));
+        const chapSnap = await getDoc(doc(db, 'artifacts', appId, 'users', userId, 'progressData', 'chapters'));
+        const chalSnap = await getDoc(doc(db, 'artifacts', appId, 'users', userId, 'progressData', 'challenger'));
+        const sheetSnap = await getDoc(doc(db, 'artifacts', appId, 'users', userId, 'progressData', 'sheets'));
+        const codeSnap = await getDoc(doc(db, 'artifacts', appId, 'users', userId, 'progressData', 'passcode'));
+
+        let hasCloudData = false;
+
+        if (subSnap.exists()) { studySubjects = subSnap.data(); hasCloudData = true; }
+        if (matSnap.exists()) { studyMaterials = matSnap.data(); hasCloudData = true; }
+        if (chapSnap.exists()) { chaptersState = chapSnap.data(); hasCloudData = true; }
+        if (chalSnap.exists()) { subjectChallengerState = chalSnap.data(); hasCloudData = true; }
+        if (sheetSnap.exists()) { quizSheets = sheetSnap.data().list || []; hasCloudData = true; }
+        if (codeSnap.exists()) { customPasscode = codeSnap.data().code || ""; }
+
+        if (!hasCloudData) {
+          loadStorageFromLocal();
+          if (Object.keys(studyMaterials).length > 0 || quizSheets.length > 0 || Object.keys(studySubjects).length > 0) {
+            await saveToFirestore();
+          }
+        } else {
+          saveStorageToLocal();
+        }
+
+        syncChaptersState();
+        renderProfileTab();
+        updateSyncStatus('synced');
+      } catch (e) {
+        console.error("클라우드 다운로드 오류:", e);
+        loadStorageFromLocal();
+        syncChaptersState();
+        renderProfileTab();
+        updateSyncStatus('local');
+      }
+    }
+
+    // 상단 동기화 상태 바 시각화 변경기
+    function updateSyncStatus(status) {
+      const statusEl = document.getElementById('sync-status');
+      if (!statusEl) return;
+      
+      if (status === 'local') {
+        statusEl.className = "px-2 py-0.5 text-[9px] font-bold rounded-full bg-slate-950 text-slate-400 border border-slate-800 flex items-center space-x-1";
+        statusEl.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span> <span>로컬 모드</span>`;
+      } else if (status === 'connecting') {
+        statusEl.className = "px-2 py-0.5 text-[9px] font-bold rounded-full bg-indigo-950/40 text-indigo-400 border border-indigo-800/30 flex items-center space-x-1";
+        statusEl.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-ping"></span> <span>동기화 연결 중</span>`;
+      } else if (status === 'synced') {
+        statusEl.className = "px-2 py-0.5 text-[9px] font-bold rounded-full bg-emerald-950/40 text-emerald-400 border border-emerald-800/30 flex items-center space-x-1";
+        statusEl.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> <span>클라우드 동기화 완료</span>`;
+      } else if (status === 'saving') {
+        statusEl.className = "px-2 py-0.5 text-[9px] font-bold rounded-full bg-amber-950/40 text-amber-400 border border-amber-800/30 flex items-center space-x-1";
+        statusEl.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> <span>클라우드 동기화 중</span>`;
+      }
+    }
+
+    // 구글 회원 연동 및 에러 대응 핸들러 (auth/unauthorized-domain 자동 익명 롤백 완벽 조치)
+    window.linkOrSignInWithGoogle = async function() {
+      if (!isFirebaseInitialized) {
+        window.openAlert("연동 오류", "Firebase 클라우드 연동 정보가 설정되어 있지 않습니다.");
+        return;
+      }
+      try {
+        const provider = new GoogleAuthProvider();
+        const result = await signInWithPopup(auth, provider);
+        currentUser = result.user;
+        await loadDataFromFirestore(currentUser.uid);
+        renderAuthPanel();
+        window.openAlert("클라우드 로그인 성공", `안녕하세요, ${currentUser.displayName || '데이터 과학자'}님! 구글 동기화가 활성화되었습니다.`);
+      } catch (err) {
+        console.error("구글 계정 인증 장애:", err);
+        
+        // [중요 개선]: 승인되지 않은 도메인 오류 발생 시 즉시 익명 세션으로 파라미터 복구하여 Firestore 기동 유지 (RULE 3 방어)
+        try {
+          if (auth && !auth.currentUser) {
+            const anonResult = await signInAnonymously(auth);
+            currentUser = anonResult.user;
+            renderAuthPanel();
+          }
+        } catch (anonErr) {
+          console.error("익명 롤백 복구 처리 장애:", anonErr);
+        }
+
+        if (err.code === 'auth/unauthorized-domain' || err.message.includes('unauthorized-domain')) {
+          window.openAlert(
+            "구글 도메인 인증 보안 에러 (auth/unauthorized-domain)",
+            "현재 플랫폼 미리보기 환경(iframe 호스팅 주소)이 사용자 파이어베이스 프로젝트의 '승인된 도메인(Authorized Domains)' 목록에 포함되지 않았습니다.\n\n[자동 예외 조치 완료]\n1. 세션의 권한 충돌 방지를 위해 파이어베이스 '익명 임시 인증' 상태로 자동 우회 복구되었습니다.\n2. 다른 디바이스와 데이터를 연동하고 싶다면 '간이 보안코드 동기화' 백업을 가동하세요!"
+          );
+          window.openPasscodeModal();
+        } else {
+          window.openAlert("로그인 장애", "구글 로그인 처리 중 오류가 발생했습니다: " + err.message);
+        }
+      }
+    };
+
+    // 🗝️ 보안 엑세스 키(Passcode) 우회 연동 기능 모듈
+    window.openPasscodeModal = function() {
+      const modal = document.getElementById('passcode-sync-modal');
+      if (modal) modal.classList.remove('hidden');
+      renderMyDevicePasscode();
+    };
+
+    window.closePasscodeModal = function() {
+      const modal = document.getElementById('passcode-sync-modal');
+      if (modal) modal.classList.add('hidden');
+    };
+
+    function renderMyDevicePasscode() {
+      const label = document.getElementById('my-device-passcode');
+      if (label) {
+        label.textContent = customPasscode ? customPasscode : "미등록 (코드 생성이 필요합니다)";
+      }
+    }
+
+    window.generateDevicePasscode = function() {
+      const randHex = 'ML-' + Array.from({length: 8}, () => Math.floor(Math.random()*16).toString(16).toUpperCase()).join('');
+      customPasscode = randHex;
+      saveStorageToLocal();
+      renderMyDevicePasscode();
+      window.openAlert("보안코드 생성 완료", `귀하의 고유 보안코드가 생성되었습니다:\n[${customPasscode}]\n\n이 코드를 다른 스마트폰이나 기기에서 입력하면 진도를 불러올 수 있습니다.`);
+    };
+
+    window.copyDevicePasscode = function() {
+      if (!customPasscode) {
+        window.openAlert("복사 불가", "코드를 먼저 생성하세요.");
+        return;
+      }
+      const tempInput = document.createElement("input");
+      tempInput.value = customPasscode;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      document.execCommand('copy');
+      document.body.removeChild(tempInput);
+      window.openAlert("복사 완료", "클립보드에 보안코드가 복사되었습니다.");
+    };
+
+    window.saveCurrentDataToPasscode = async function() {
+      if (!customPasscode) {
+        window.openAlert("백업 실패", "보안코드를 먼저 생성해 주세요.");
+        return;
+      }
+      if (!isFirebaseInitialized) {
+        window.openAlert("연동 에러", "Firebase 연결이 정의되지 않았습니다.");
+        return;
+      }
+      try {
+        updateSyncStatus('saving');
+        const passcodeDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'passcodeSync', customPasscode);
+        await setDoc(passcodeDocRef, {
+          studySubjects,
+          studyMaterials,
+          chaptersState,
+          subjectChallengerState,
+          quizSheets,
+          timestamp: Date.now()
+        });
+        updateSyncStatus('synced');
+        window.openAlert("클라우드 백업 완수", `현재 기기의 전공과목 및 랭크 데이터가 [${customPasscode}] 키로 실시간 클라우드 백업되었습니다.`);
+      } catch (e) {
+        console.error(e);
+        window.openAlert("백업 에러", "클라우드 백업 중 에러가 발생했습니다.");
+      }
+    };
+
+    window.loadFromTargetPasscode = async function() {
+      const targetInput = document.getElementById('target-passcode-input');
+      if (!targetInput) return;
+      const code = targetInput.value.trim().toUpperCase();
+      if (!code) {
+        window.openAlert("경고", "불러올 다른 기기의 코드를 기입해 주세요.");
+        return;
+      }
+      if (!isFirebaseInitialized) {
+        window.openAlert("연동 에러", "Firebase 연결 상태가 아닙니다.");
+        return;
+      }
+      try {
+        updateSyncStatus('connecting');
+        const passcodeDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'passcodeSync', code);
+        const snap = await getDoc(passcodeDocRef);
+        if (snap.exists()) {
+          const payload = snap.data();
+          studySubjects = payload.studySubjects || {};
+          studyMaterials = payload.studyMaterials || {};
+          chaptersState = payload.chaptersState || {};
+          subjectChallengerState = payload.subjectChallengerState || {};
+          quizSheets = payload.quizSheets || [];
+          customPasscode = code;
+
+          saveStorageToLocal();
+          syncChaptersState();
+          
+          window.openAlert("클라우드 복원 완수", `성공적으로 다른 디바이스의 학습 데이터를 불러왔습니다.\n(코드: ${code})`);
+          window.closePasscodeModal();
+          
+          renderProfileTab();
+          renderSubjectManageTab();
+          renderGenerateTab();
+          renderStorageTab();
+          updateSyncStatus('synced');
+        } else {
+          window.openAlert("일치 정보 없음", "해당 보안코드로 저장된 클라우드 백업 정보를 발견하지 못했습니다. 코드를 확인해 주세요.");
+        }
+      } catch (e) {
+        console.error(e);
+        window.openAlert("복원 에러", "클라우드 데이터 유출 복원 중 통신 오류가 발생했습니다.");
+      }
+    };
+
+    window.handleSignOut = async function() {
+      if (!isFirebaseInitialized) return;
+      try {
+        await signOut(auth);
+        currentUser = null;
+        renderAuthPanel();
+        await signInAnonymously(auth);
+        window.openAlert("연동 로그아웃", "클라우드 계정이 로그아웃되었습니다. 임시 로컬 캐시 모드로 동작합니다.");
+      } catch (err) {
+        console.error("구글 로그아웃 에러:", err);
+      }
+    };
+
+    function renderAuthPanel() {
+      const panel = document.getElementById('google-auth-panel');
+      const profileUserName = document.getElementById('profile-user-name');
+      const profileUserEmail = document.getElementById('profile-user-email');
+      const profileWelcomeMsg = document.getElementById('profile-welcome-msg');
+      
+      if (!panel) return;
+
+      if (currentUser && !currentUser.isAnonymous) {
+        if (profileUserName) profileUserName.textContent = currentUser.displayName || "데이터 과학자";
+        if (profileUserEmail) profileUserEmail.textContent = `(${currentUser.email})`;
+        if (profileWelcomeMsg) profileWelcomeMsg.textContent = "구글 공식 클라우드 실시간 동기화 계정으로 접속 중입니다.";
+
+        panel.innerHTML = `
+          <div class="space-y-2">
+            <div class="flex items-center space-x-2 bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+              <img src="${currentUser.photoURL || 'https://www.gravatar.com/avatar?d=mp'}" class="w-8 h-8 rounded-full border border-indigo-500/50" />
+              <div class="text-left truncate flex-grow">
+                <span class="text-xs font-bold text-slate-200 block truncate">${currentUser.displayName || '데이터 과학자'}</span>
+                <span class="text-[9px] text-slate-500 block truncate">${currentUser.email}</span>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <button onclick="openPasscodeModal()" class="py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 font-bold text-[10px] rounded-lg border border-indigo-500/20 transition-all">
+                🗝️ 보안코드 백업
+              </button>
+              <button onclick="handleSignOut()" class="py-2 bg-rose-500/10 border border-rose-500/20 text-rose-400 font-bold text-[10px] rounded-lg transition-all">
+                로그아웃
+              </button>
+            </div>
+          </div>
+        `;
+      } else {
+        if (profileUserName) profileUserName.textContent = "게스트 데이터 과학자";
+        if (profileUserEmail) profileUserEmail.textContent = "";
+        if (profileWelcomeMsg) profileWelcomeMsg.textContent = "임시 로컬 상태입니다. 다른 컴퓨터 또는 기기 연동을 위해 클라우드 동기화를 진행해 주세요.";
+
+        panel.innerHTML = `
+          <button onclick="linkOrSignInWithGoogle()" class="w-full py-2.5 px-4 bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs rounded-xl flex items-center justify-center space-x-2 shadow transition-all transform hover:scale-[1.02]">
+            <svg class="w-4 h-4" viewBox="0 0 24 24">
+              <path fill="#EA4335" d="M12 5.04c1.66 0 3.2.57 4.38 1.69l3.27-3.27C17.68 1.54 14.98 1 12 1 7.35 1 3.37 3.65 1.39 7.5l3.85 2.99c.92-2.76 3.51-4.45 6.76-4.45z"/>
+              <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.36H12v4.51h6.46c-.29 1.48-1.14 2.73-2.4 3.58l3.73 2.89c2.18-2.01 3.7-4.97 3.7-8.62z"/>
+              <path fill="#FBBC05" d="M5.24 14.79c-.24-.73-.38-1.51-.38-2.32s.14-1.59.38-2.32L1.39 7.16C.5 8.94 0 10.91 0 13s.5 4.06 1.39 5.84l3.85-3.05z"/>
+              <path fill="#34A853" d="M12 23c3.24 0 5.97-1.07 7.96-2.92l-3.73-2.89c-1.1.74-2.51 1.18-4.23 1.18-3.25 0-5.84-1.69-6.76-4.45L1.39 16.9C3.37 20.75 7.35 23 12 23z"/>
+            </svg>
+            <span>Google 동기화 로그인</span>
+          </button>
+          
+          <button onclick="openPasscodeModal()" class="w-full py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold text-[10px] rounded-lg border border-slate-800 transition-all flex items-center justify-center space-x-1.5">
+            <span>🗝️ iframe 구글 오류 시 보안코드 수동 연동</span>
+          </button>
+        `;
+      }
+    }
+
+    // 랭킹 및 저장 통합 세이브 라우터
+    window.saveStorage = function() {
+      saveStorageToLocal();
+      if (isFirebaseInitialized && currentUser) {
+        saveToFirestore();
+      }
+    };
+
+    window.loadStorage = function() {
+      loadStorageFromLocal();
+    };
+
+    // 과목/챕터 정보와 게이미피케이션 상태 연계 동기화
+    function syncChaptersState() {
+      Object.keys(studySubjects).forEach(subId => {
+        const subjectObj = studySubjects[subId];
+        const subName = subjectObj.name;
+        
+        if (subjectChallengerState[subName] === undefined) {
+          subjectChallengerState[subName] = false;
+        }
+
+        if (subjectObj.chapters) {
+          Object.keys(subjectObj.chapters).forEach(chapId => {
+            const chapObj = subjectObj.chapters[chapId];
+            const materialKey = `${subName}___${chapObj.name}`;
+            
+            if (!studyMaterials[materialKey]) {
+              studyMaterials[materialKey] = {
+                subject: subName,
+                chapter: chapObj.name,
+                contents: [chapObj.content || ""]
+              };
+            } else {
+              studyMaterials[materialKey].contents = [chapObj.content || ""];
+            }
+
+            if (!chaptersState[materialKey]) {
+              chaptersState[materialKey] = {
+                subject: subName,
+                chapter: chapObj.name,
+                tier: "Unrank",
+                xp: 0,
+                promotionReady: false,
+                clearedQuizIds: {}
+              };
+            }
+          });
+        }
+      });
+      window.saveStorage();
+    }
+
+    function getNextRank(currentTier) {
+      const idx = RANKS.indexOf(currentTier);
+      if (idx === RANKS.length - 1) return "MAX TIER";
+      return RANKS[idx + 1];
+    }
+
+    // 과거 채점결과 보기
+    window.showPastReport = function(sheetId) {
+      activeSheet = quizSheets.find(s => s.id === sheetId);
+      if (!activeSheet) return;
+
+      if (activeSheet.userAnswers) {
+        tempAnswers = JSON.parse(JSON.stringify(activeSheet.userAnswers));
+      } else {
+        tempAnswers = activeSheet.questions.map(q => ({
+          chosen: q.answer,
+          isSubmitted: true
+        }));
+      }
+
+      if (feedbackBox) feedbackBox.classList.add('hidden');
+      if (aiQuizResponsePanel) aiQuizResponsePanel.classList.add('hidden');
+      if (aiQuizResponseContent) aiQuizResponseContent.innerHTML = '';
+
+      if (homeView) homeView.classList.add('hidden');
+      if (quizView) quizView.classList.add('hidden');
+      if (resultView) resultView.classList.remove('hidden');
+
+      showResults();
+    };
+
+    window.startPromotionChallenge = function(key) {
+      const item = studyMaterials[key];
+      if (!item) return;
+
+      window.changeDashboardTab("generate");
+      
+      const genSubSelect = document.getElementById('gen-subject-select');
+      if (genSubSelect) {
+        const matchedSubId = Object.keys(studySubjects).find(k => studySubjects[k].name === item.subject);
+        if (matchedSubId) {
+          genSubSelect.value = matchedSubId;
+          window.onGenSubjectSelectChange();
+          
+          const genChapSelect = document.getElementById('gen-chapter-select');
+          if (genChapSelect) {
+            const matchedChap = Array.from(genChapSelect.options).find(opt => opt.text.includes(item.chapter));
+            if (matchedChap) {
+              genChapSelect.value = matchedChap.value;
+            }
+          }
+        }
+      }
+
+      window.setGenType('real');
+    };
+
+    // 🏆 [통합 챌린저 관문] 트리거 세션 개시
+    window.startChallengerChallenge = function(subject) {
+      window.changeDashboardTab("generate");
+      
+      const genSubSelect = document.getElementById('gen-subject-select');
+      if (genSubSelect) {
+        const matchedSubId = Object.keys(studySubjects).find(k => studySubjects[k].name === subject);
+        if (matchedSubId) {
+          genSubSelect.value = matchedSubId;
+          window.onGenSubjectSelectChange();
+          
+          const genChapSelect = document.getElementById('gen-chapter-select');
+          if (genChapSelect) {
+            genChapSelect.value = "challenger_virtual";
+            window.updateGenerateTypeLock();
+          }
+        }
+      }
+      
+      window.setGenType('real');
+    };
+
+    // ⚡ 관리자 챕터별 강제 승급 (마스터 제한 보정)
+    window.adminInstantPromote = function(key) {
+      if (!isAdminMode) return;
+      const state = chaptersState[key];
+      if (!state) return;
+      
+      const currentRankIdx = RANKS.indexOf(state.tier);
+      if (currentRankIdx < RANKS.length - 1) {
+        state.tier = RANKS[currentRankIdx + 1];
+        state.xp = 0;
+        state.promotionReady = false;
+        window.saveStorage();
+        renderProfileTab();
+        window.openAlert("⚡ 관리자 치트 승급", `[${state.chapter}] 단원이 ${state.tier} 등급으로 조정되었습니다! (최고 상한: 마스터)`);
+      } else {
+        window.openAlert("최고 레벨 도달", "해당 단원은 이미 챕터 최고 랭크인 [마스터] 상태입니다.");
+      }
+    };
+
+    // ⚡ 관리자 과목 전체 챌린저 즉시 승격 치트 단추
+    window.adminForceChallenger = function(subject) {
+      if (!isAdminMode) return;
+      subjectChallengerState[subject] = true;
+      window.saveStorage();
+      renderProfileTab();
+      window.openAlert("⚡ 과목 챌린저 즉시 승격", `[${subject}] 과목이 챌린저 수련 마스터 리그에 최종 승격되었습니다!`);
+    };
+
+    window.adminSubmitAllCorrect = function() {
+      if (!isAdminMode || !activeSheet) return;
+      
+      tempAnswers.forEach((ans, idx) => {
+        ans.chosen = activeSheet.questions[idx].answer;
+        ans.isSubmitted = true;
+      });
+
+      applyGamificationRules();
+      window.openAlert("⚡ 관리자 치트 제출", "모든 문제가 100% 정답 상태로 즉시 일괄 패스 처리되었습니다.");
+    };
+
+    window.toggleAdminMode = function() {
+      isAdminMode = !isAdminMode;
+      const btn = document.getElementById('admin-toggle-btn');
+      if (btn) {
+        if (isAdminMode) {
+          btn.className = "px-2.5 py-0.5 bg-yellow-500 text-slate-950 text-[10px] font-black rounded-full border border-yellow-400 transition-all shadow-lg animate-pulse";
+          btn.innerHTML = `<span>👤 관리자 활성</span>`;
+          window.openAlert("🛠️ 치트 모드 활성화", "치트 권한 작동:\n1. 챕터별 강제 마스터 승급\n2. 과목 챌린저 강제 승격 버튼 오픈 ⚡\n3. 문제 풀이 정답 보기 힌트 활성화\n4. 시험지 만점 일괄 제출 버튼 노출");
+        } else {
+          btn.className = "px-2.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold rounded-full border border-slate-700 transition-all";
+          btn.innerHTML = `<span>🛠️ 치트 권한</span>`;
+          window.openAlert("🛠️ 치트 모드 해제", "일반 학습 모드로 정상 복귀하였습니다.");
+        }
+      }
+      renderProfileTab();
+      if (activeSheet) {
+        loadQuestion();
+        renderNavButtons();
+      }
+    };
+
+    // 대시보드 탭 제어기
+    window.changeDashboardTab = function(tabId) {
+      activeTab = tabId;
+      
+      if (homeView) homeView.classList.remove('hidden');
+      if (quizView) quizView.classList.add('hidden');
+      if (resultView) resultView.classList.add('hidden');
+      
+      const tabs = ["profile", "subjects", "generate", "storage", "settings"];
+      tabs.forEach(t => {
+        const dBtn = document.getElementById(`tab-btn-${t}`);
+        const mBtn = document.getElementById(`m-tab-${t}`);
+        const viewEl = document.getElementById(`view-${t}`);
+        
+        if (t === tabId) {
+          if (dBtn) {
+            if (t === 'settings') {
+              dBtn.className = "px-3.5 py-2 rounded-lg text-xs font-black transition-all text-emerald-400 bg-emerald-500/10 border border-emerald-500/30";
+            } else {
+              dBtn.className = "px-3.5 py-2 rounded-lg text-xs font-black transition-all text-indigo-400 bg-slate-900";
+            }
+          }
+          if (mBtn) mBtn.className = t === 'settings' ? "flex flex-col items-center space-y-1 text-emerald-400 flex-shrink-0 px-2" : "flex flex-col items-center space-y-1 text-indigo-400 flex-shrink-0 px-2";
+          if (viewEl) viewEl.classList.remove('hidden');
+        } else {
+          if (dBtn) {
+            if (t === 'settings') {
+              dBtn.className = "px-3.5 py-2 rounded-lg text-xs font-black transition-all text-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/20";
+            } else {
+              dBtn.className = "px-3.5 py-2 rounded-lg text-xs font-black transition-all text-slate-400 hover:text-white";
+            }
+          }
+          if (mBtn) mBtn.className = t === 'settings' ? "flex flex-col items-center space-y-1 text-slate-500 flex-shrink-0 px-2" : "flex flex-col items-center space-y-1 text-slate-400 flex-shrink-0 px-2";
+          if (viewEl) viewEl.classList.add('hidden');
+        }
+      });
+
+      if (tabId === "profile") renderProfileTab();
+      if (tabId === "subjects") renderSubjectManageTab();
+      if (tabId === "generate") renderGenerateTab();
+      if (tabId === "storage") {
+        activeFilterSubject = "ALL";
+        activeFilterChapter = "ALL";
+        renderStorageTab();
+      }
+      if (tabId === "settings") loadCustomCredentialsToUI();
+    };
+
+    window.toggleSubjectAccordion = function(subjectName) {
+      openedSubjects[subjectName] = !openedSubjects[subjectName];
+      renderProfileTab();
+    };
+
+    // ==================== [과목 관리 로직 모듈] ====================
+
+    // 신규 과목 생성
+    window.createNewSubject = function() {
+      const input = document.getElementById('subj-name-input');
+      if (!input) return;
+      const name = input.value.trim();
+      if (!name) {
+        window.openAlert("입력 확인", "과목 이름을 명시해 주세요.");
+        return;
+      }
+
+      const exists = Object.keys(studySubjects).some(k => studySubjects[k].name === name);
+      if (exists) {
+        window.openAlert("생성 불가", "이미 동일한 이름으로 생성된 과목이 존재합니다.");
+        return;
+      }
+
+      const id = "sub_" + Date.now();
+      studySubjects[id] = {
+        id: id,
+        name: name,
+        schedules: [],
+        memos: [],
+        chapters: {}
+      };
+
+      input.value = "";
+      window.saveStorage();
+      syncChaptersState();
+      renderSubjectManageTab();
+      window.openAlert("과목 생성 완료", `[${name}] 과목이 정식 추가되었습니다.`);
+    };
+
+    // 개설 과목 삭제 (과목 폐강)
+    window.deleteSubject = function(subId) {
+      const subject = studySubjects[subId];
+      if (!subject) return;
+
+      window.openConfirmModal(
+        "과목 폐강 확인",
+        `정말로 [${subject.name}] 과목 전체를 폐강(삭제)할까요?`,
+        () => {
+          delete studySubjects[subId];
+          if (selectedManageSubjectId === subId) {
+            selectedManageSubjectId = null;
+          }
+          window.saveStorage();
+          syncChaptersState();
+          renderSubjectManageTab();
+          renderProfileTab();
+        },
+        "과목 완전히 삭제"
+      );
+    };
+
+    // 과목 관리 내부 세부 탭 제어판 전환기
+    window.changeSubDetailTab = function(subTabId) {
+      activeSubDetailTab = subTabId;
+      const subTabs = ["chapters", "schedules", "memos"];
+      
+      subTabs.forEach(t => {
+        const btn = document.getElementById(`sub-tab-btn-${t}`);
+        const panel = document.getElementById(`sub-tab-panel-${t}`);
+        
+        if (t === subTabId) {
+          if (btn) btn.className = "px-4 py-2.5 text-xs font-black border-b-2 border-indigo-500 text-indigo-400 bg-indigo-500/5 rounded-t-lg transition-all";
+          if (panel) panel.classList.remove('hidden');
+        } else {
+          if (btn) btn.className = "px-4 py-2.5 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-all";
+          if (panel) panel.classList.add('hidden');
+        }
+      });
+    };
+
+    // 과목 관리 탭 빌더
+    function renderSubjectManageTab() {
+      const listContainer = document.getElementById('subject-manage-list');
+      if (!listContainer) return;
+      listContainer.innerHTML = '';
+
+      const subjectIds = Object.keys(studySubjects);
+      if (subjectIds.length === 0) {
+        listContainer.innerHTML = `<span class="text-[11px] text-slate-500 block text-center py-6">개설된 과목이 없습니다.<br>과목을 먼저 개설해 주세요.</span>`;
+        document.getElementById('subject-detail-fallback').classList.remove('hidden');
+        document.getElementById('subject-detail-panel').classList.add('hidden');
+        return;
+      }
+
+      subjectIds.forEach(id => {
+        const sub = studySubjects[id];
+        const tabBtn = document.createElement('button');
+        tabBtn.className = `w-full text-left p-3.5 rounded-xl border transition-all text-xs flex justify-between items-center ${selectedManageSubjectId === id ? 'bg-indigo-600/15 border-indigo-500 text-indigo-300 ring-1 ring-indigo-500/20' : 'bg-slate-950/40 border-slate-800/80 text-slate-400 hover:bg-slate-900/60'}`;
+        tabBtn.innerHTML = `
+          <div class="truncate pr-2">
+            <span class="font-black block truncate text-slate-200">${sub.name}</span>
+            <span class="text-[10px] text-slate-500 block mt-0.5">단원 ${Object.keys(sub.chapters || {}).length}개 | 일정 ${sub.schedules?.length || 0}개</span>
+          </div>
+          <svg class="w-4 h-4 text-indigo-500/70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+        `;
+        tabBtn.onclick = function() {
+          selectManageSubject(id);
+        };
+        listContainer.appendChild(tabBtn);
+      });
+
+      if (selectedManageSubjectId) {
+        selectManageSubject(selectedManageSubjectId);
+      } else {
+        document.getElementById('subject-detail-fallback').classList.remove('hidden');
+        document.getElementById('subject-detail-panel').classList.add('hidden');
+      }
+    }
+
+    function selectManageSubject(subId) {
+      selectedManageSubjectId = subId;
+      const sub = studySubjects[subId];
+      if (!sub) return;
+
+      document.getElementById('subject-detail-fallback').classList.add('hidden');
+      document.getElementById('subject-detail-panel').classList.remove('hidden');
+
+      const title = document.getElementById('detail-subject-title');
+      if (title) title.textContent = sub.name;
+
+      const deleteBtn = document.getElementById('delete-subject-btn');
+      if (deleteBtn) {
+        deleteBtn.onclick = function() {
+          deleteSubject(subId);
+        };
+      }
+
+      window.changeSubDetailTab(activeSubDetailTab);
+
+      renderSubjectSchedules();
+      renderSubjectMemos();
+      renderSubjectChapters();
+    }
+
+    // 기한 원클릭 가속 프리셋 함수 정의
+    window.setSchedulePreset = function(days) {
+      const dateInput = document.getElementById('schedule-date-input');
+      if (!dateInput) return;
+      
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() + days);
+      
+      const year = targetDate.getFullYear();
+      const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+      const day = String(targetDate.getDate()).padStart(2, '0');
+      
+      dateInput.value = `${year}-${month}-${day}`;
+    };
+
+    // 과목별 일정 관리 등록
+    window.addSubjectSchedule = function() {
+      if (!selectedManageSubjectId) return;
+      const typeInput = document.getElementById('schedule-type-input');
+      const titleInput = document.getElementById('schedule-title-input');
+      const descInput = document.getElementById('schedule-desc-input');
+      const dateInput = document.getElementById('schedule-date-input');
+
+      if (!typeInput || !titleInput || !descInput || !dateInput) return;
+
+      const title = titleInput.value.trim();
+      const desc = descInput.value.trim();
+      const date = dateInput.value;
+
+      if (!title || !date) {
+        window.openAlert("기입 누락", "학습 일정의 '제목'과 '기한'은 의무적으로 작성해 주셔야 합니다.");
+        return;
+      }
+
+      const sub = studySubjects[selectedManageSubjectId];
+      if (!sub.schedules) sub.schedules = [];
+
+      sub.schedules.push({
+        id: "sched_" + Date.now(),
+        type: typeInput.value,
+        title: title,
+        desc: desc ? desc : "추가 기재 정보 없음",
+        date: date
+      });
+
+      titleInput.value = "";
+      descInput.value = "";
+      dateInput.value = "";
+      
+      window.saveStorage();
+      renderSubjectSchedules();
+      renderProfileTab();
+      window.openAlert("일정 수립 완료", "일정이 새로 추가되어 프로필 메인 피드와 해당 과목 제어판에 연동되었습니다.");
+    };
+
+    window.deleteSubjectSchedule = function(schedId) {
+      if (!selectedManageSubjectId) return;
+      const sub = studySubjects[selectedManageSubjectId];
+      sub.schedules = sub.schedules.filter(s => s.id !== schedId);
+      window.saveStorage();
+      renderSubjectSchedules();
+      renderProfileTab();
+    };
+
+    function renderSubjectSchedules() {
+      const container = document.getElementById('schedule-render-list');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const sub = studySubjects[selectedManageSubjectId];
+      if (!sub.schedules || sub.schedules.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-8 text-slate-500 text-xs">
+            등록된 시험 및 기한 마감 일정이 없습니다. 좌측에서 일정을 설계해 보세요!
+          </div>
+        `;
+        return;
+      }
+
+      sub.schedules.forEach(s => {
+        const item = document.createElement('div');
+        item.className = "p-3.5 bg-slate-950/80 rounded-xl border border-slate-850/80 hover:border-slate-700 transition-all space-y-1.5 relative group";
+        
+        let typeText = "일반";
+        let badgeColor = "bg-slate-800 text-slate-300 border border-slate-700";
+        if (s.type === 'exam') {
+          typeText = "시험 평가";
+          badgeColor = "bg-rose-500/10 text-rose-400 border border-rose-500/20";
+        } else if (s.type === 'homework') {
+          typeText = "과제 마감";
+          badgeColor = "bg-amber-500/10 text-amber-400 border border-amber-500/20";
+        } else if (s.type === 'study') {
+          typeText = "학습 보강";
+          badgeColor = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+        }
+
+        item.innerHTML = `
+          <div class="flex justify-between items-start gap-2">
+            <div class="flex items-center space-x-2 truncate">
+              <span class="px-2 py-0.5 text-[9px] font-bold rounded ${badgeColor}">${typeText}</span>
+              <span class="text-xs font-black text-slate-200 truncate max-w-[200px]">${s.title}</span>
+            </div>
+            <span class="text-[10px] font-mono text-indigo-400 font-bold bg-indigo-500/5 px-2 py-0.5 rounded border border-indigo-500/10">${s.date}</span>
+          </div>
+          <p class="text-[11px] text-slate-400 bg-slate-900/60 p-2 rounded-lg border border-slate-850 whitespace-pre-line leading-relaxed">${s.desc}</p>
+          <button onclick="deleteSubjectSchedule('${s.id}')" class="absolute bottom-2 right-2 px-1.5 py-0.5 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-600 hover:text-white text-rose-400 text-[8px] font-bold rounded transition-all opacity-0 group-hover:opacity-100">일정 삭제</button>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    // 과목 전용 메모 관리
+    window.addSubjectMemo = function() {
+      if (!selectedManageSubjectId) return;
+      const input = document.getElementById('memo-text-input');
+      if (!input) return;
+      const text = input.value.trim();
+
+      if (!text) {
+        window.openAlert("내용 확인", "학습 노트 메모 내용을 적어주세요.");
+        return;
+      }
+
+      const sub = studySubjects[selectedManageSubjectId];
+      if (!sub.memos) sub.memos = [];
+
+      sub.memos.push({
+        id: "memo_" + Date.now(),
+        text: text,
+        date: new Date().toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
+      });
+
+      input.value = "";
+      window.saveStorage();
+      renderSubjectMemos();
+    };
+
+    window.deleteSubjectMemo = function(memoId) {
+      if (!selectedManageSubjectId) return;
+      const sub = studySubjects[selectedManageSubjectId];
+      sub.memos = sub.memos.filter(m => m.id !== memoId);
+      window.saveStorage();
+      renderSubjectMemos();
+    };
+
+    function renderSubjectMemos() {
+      const container = document.getElementById('memo-render-list');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const sub = studySubjects[selectedManageSubjectId];
+      if (!sub.memos || sub.memos.length === 0) {
+        container.innerHTML = `<span class="col-span-2 text-[10px] text-slate-500 block text-center py-4">학습 가이드 메모 노트가 비어 있습니다.</span>`;
+        return;
+      }
+
+      sub.memos.forEach(m => {
+        const item = document.createElement('div');
+        item.className = "p-3 bg-yellow-500/5 border border-yellow-500/25 rounded-xl relative text-[11px] text-slate-300 leading-relaxed group shadow-md";
+        item.innerHTML = `
+          <p class="pr-2 whitespace-normal break-all font-medium">${m.text}</p>
+          <div class="flex justify-between items-center mt-2.5 border-t border-yellow-500/10 pt-1.5 text-[9px] text-slate-500">
+            <span>${m.date}</span>
+            <button onclick="deleteSubjectMemo('${m.id}')" class="text-rose-400 opacity-60 group-hover:opacity-100 transition-opacity font-bold">삭제</button>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    // 과목 단원(챕터) 추가 및 교안 파일 마운트 이관
+    window.createNewChapter = function() {
+      if (!selectedManageSubjectId) return;
+      const input = document.getElementById('chap-name-input');
+      if (!input) return;
+      const name = input.value.trim();
+
+      if (!name) {
+        window.openAlert("단원명 확인", "추가할 전공 단원 이름을 적어주세요.");
+        return;
+      }
+
+      if (!genFileContent) {
+        window.openAlert("참고 교안 없음", "AI 문제지가 학생 맞춤형으로 교안 밖 소스를 침범하지 않게 출제될 수 있도록 전공 교안 및 참고 문서를 디코더 영역에 먼저 올려주세요.");
+        return;
+      }
+
+      const sub = studySubjects[selectedManageSubjectId];
+      if (!sub.chapters) sub.chapters = {};
+
+      const exists = Object.keys(sub.chapters).some(k => sub.chapters[k].name === name);
+      if (exists) {
+        window.openAlert("오류", "동일한 단원명이 이미 탑재되어 있습니다.");
+        return;
+      }
+
+      const chapId = "chap_" + Date.now();
+      sub.chapters[chapId] = {
+        id: chapId,
+        name: name,
+        content: genFileContent,
+        fileName: document.getElementById('cancel-file-name-label')?.textContent || "인덱싱문서"
+      };
+
+      window.cancelUploadedFile();
+      input.value = "";
+      
+      window.saveStorage();
+      syncChaptersState();
+      renderSubjectChapters();
+      window.openAlert("단원 탑재 완수", `[${name}] 단원의 교안 분석이 성공적으로 등록되었습니다!`);
+    };
+
+    window.deleteSubjectChapter = function(chapId) {
+      if (!selectedManageSubjectId) return;
+      const sub = studySubjects[selectedManageSubjectId];
+      const chap = sub.chapters[chapId];
+      if (!chap) return;
+
+      window.openConfirmModal(
+        "단원 파일 해제",
+        `[${chap.name}] 단원 분석 정보를 파기할까요?`,
+        () => {
+          const materialKey = `${sub.name}___${chap.name}`;
+          delete studyMaterials[materialKey];
+          delete chaptersState[materialKey];
+
+          delete sub.chapters[chapId];
+          window.saveStorage();
+          syncChaptersState();
+          renderSubjectChapters();
+        },
+        "단원 데이터 파기"
+      );
+    };
+
+    function renderSubjectChapters() {
+      const container = document.getElementById('chapter-manage-list');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const sub = studySubjects[selectedManageSubjectId];
+      const chaptersKeys = Object.keys(sub.chapters || {});
+
+      if (chaptersKeys.length === 0) {
+        container.innerHTML = `<span class="text-[10px] text-slate-500 block text-center py-6">등록된 단원이 아직 없습니다. 좌측에서 교안과 함께 추가해 보세요!</span>`;
+        return;
+      }
+
+      chaptersKeys.forEach(k => {
+        const chap = sub.chapters[k];
+        const rawLength = chap.content ? chap.content.length : 0;
+        const item = document.createElement('div');
+        item.className = "p-3 bg-slate-950/80 rounded-xl border border-slate-850 flex justify-between items-center gap-2 hover:border-slate-700 transition-all shadow-sm";
+        item.innerHTML = `
+          <div class="truncate flex-grow">
+            <span class="text-xs font-bold text-slate-200 block truncate">${chap.name}</span>
+            <span class="text-[9px] text-slate-500 block truncate mt-0.5">📁 문서: ${chap.fileName || '교안문서.txt'} (${(rawLength/1000).toFixed(1)}k 글자 분량)</span>
+          </div>
+          <button onclick="deleteSubjectChapter('${chap.id}')" class="px-2.5 py-1.5 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-600 hover:text-white text-rose-400 rounded-lg text-[9px] font-bold transition-all flex-shrink-0">파기</button>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    // ==================== [과목 관리 로직 모듈 끝] ====================
+
+    // 1. 학습 프로필 탭 렌더링 (일정 리스트 포함)
+    function renderProfileTab() {
+      syncChaptersState();
+      
+      const totalQuizzes = quizSheets.length;
+      const profileStatsQuizzes = document.getElementById('profile-stats-quizzes');
+      if (profileStatsQuizzes) profileStatsQuizzes.textContent = totalQuizzes;
+
+      let topRankStr = "Unrank";
+      let hasAnyChallenger = false;
+      Object.keys(subjectChallengerState).forEach(sub => {
+        if (subjectChallengerState[sub]) hasAnyChallenger = true;
+      });
+
+      if (hasAnyChallenger) {
+        topRankStr = "🏆 챌린저";
+      } else {
+        let topRankIndex = 0;
+        Object.keys(chaptersState).forEach(key => {
+          const idx = RANKS.indexOf(chaptersState[key].tier);
+          if (idx > topRankIndex) topRankIndex = idx;
+        });
+        topRankStr = RANKS[topRankIndex];
+      }
+
+      const avatarBox = document.getElementById('profile-avatar-circle');
+      if (avatarBox) {
+        avatarBox.innerHTML = `<span class="text-4xl" id="profile-avatar-emoji">${TIER_EMOJIS[topRankStr] || '🎓'}</span>`;
+      }
+      
+      const profileSubSummary = document.getElementById('profile-welcome-msg');
+      if (profileSubSummary) {
+        profileSubSummary.textContent = hasAnyChallenger 
+          ? `축하합니다! 과목 챌린저 리그 마스터 리거 자격을 최종 달성하셨습니다.` 
+          : `현재 수련 중인 전공별 등급 중 최고 랭크 수준: [${topRankStr}] 단계입니다.`;
+      }
+
+      const schedContainer = document.getElementById('profile-schedule-container');
+      const schedCountLabel = document.getElementById('profile-schedule-count');
+      
+      let allSchedules = [];
+      Object.keys(studySubjects).forEach(subId => {
+        const sub = studySubjects[subId];
+        if (sub.schedules) {
+          sub.schedules.forEach(s => {
+            allSchedules.push({
+              subjectName: sub.name,
+              ...s
+            });
+          });
+        }
+      });
+
+      allSchedules.sort((a,b) => new Date(a.date) - new Date(b.date));
+
+      if (schedCountLabel) schedCountLabel.textContent = `${allSchedules.length}개 일정 대기 중`;
+
+      if (schedContainer) {
+        schedContainer.innerHTML = '';
+        if (allSchedules.length === 0) {
+          schedContainer.innerHTML = `
+            <div class="col-span-2 text-center text-slate-500 py-6 text-xs bg-slate-950/20 border border-slate-900 rounded-xl">
+              등록된 전공 과제 마감이나 시험 일정이 없습니다. 과목 관리 탭에서 추가해 보세요!
+            </div>
+          `;
+        } else {
+          allSchedules.forEach(s => {
+            const el = document.createElement('div');
+            el.className = "p-3 rounded-xl bg-slate-950 border border-slate-850 flex justify-between items-center";
+            
+            let badgeColor = "bg-slate-800 text-slate-300 border border-slate-700";
+            let typeLabel = "일정";
+            if (s.type === 'exam') {
+              badgeColor = "bg-rose-500/10 text-rose-400 border border-rose-500/20";
+              typeLabel = "시험";
+            } else if (s.type === 'homework') {
+              badgeColor = "bg-amber-500/10 text-amber-400 border border-amber-500/20";
+              typeLabel = "과제";
+            } else if (s.type === 'study') {
+              badgeColor = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+              typeLabel = "보강";
+            }
+
+            el.innerHTML = `
+              <div class="truncate mr-3">
+                <span class="text-[8px] text-slate-500 block truncate font-mono">${s.subjectName}</span>
+                <span class="text-xs font-bold text-slate-200 block truncate mt-0.5">${s.title}</span>
+              </div>
+              <div class="flex items-center space-x-2 flex-shrink-0">
+                <span class="px-2 py-0.5 text-[8px] font-bold rounded ${badgeColor}">${typeLabel}</span>
+                <span class="text-[10px] font-mono text-indigo-400 font-bold">${s.date}</span>
+              </div>
+            `;
+            schedContainer.appendChild(el);
+          });
+        }
+      }
+
+      const accordionContainer = document.getElementById('subject-accordion-container');
+      if (!accordionContainer) return;
+      accordionContainer.innerHTML = '';
+
+      if (Object.keys(chaptersState).length === 0) {
+        accordionContainer.innerHTML = `
+          <div class="bg-slate-900/40 border-2 border-dashed border-slate-850 p-8 rounded-2xl text-center space-y-3">
+            <p class="text-slate-400 text-sm font-medium">현재 아카이브에 기출 단원이 매핑되지 않았습니다.</p>
+            <p class="text-slate-500 text-xs">[과목 관리] 탭에서 과목과 세부 챕터를 개설하고 교안 파일을 마운트해 주세요!</p>
+          </div>
+        `;
+        return;
+      }
+
+      let grouped = {};
+      Object.keys(chaptersState).forEach(key => {
+        const state = chaptersState[key];
+        if (!grouped[state.subject]) {
+          grouped[state.subject] = [];
+        }
+        grouped[state.subject].push({ key, state });
+      });
+
+      let totalPassedPoints = 0;
+      let totalNodes = 0;
+      Object.keys(chaptersState).forEach(key => {
+        const state = chaptersState[key];
+        const idx = RANKS.indexOf(state.tier);
+        totalPassedPoints += idx; 
+        totalNodes++;
+      });
+      const avgAchievement = totalNodes > 0 ? Math.round((totalPassedPoints / (totalNodes * 6)) * 100) : 0;
+      const progressTextEl = document.getElementById('profile-completed-rate-text');
+      if (progressTextEl) progressTextEl.textContent = `평균 학업 도달률: ${avgAchievement}%`;
+
+      Object.keys(grouped).forEach(subject => {
+        const chaptersList = grouped[subject];
+        const isOpen = openedSubjects[subject] === true;
+        const isChallenger = subjectChallengerState[subject] === true;
+
+        let allChaptersMaster = true;
+        chaptersList.forEach(item => {
+          if (item.state.tier !== "마스터") {
+            allChaptersMaster = false;
+          }
+        });
+
+        const card = document.createElement('div');
+        card.className = isChallenger 
+          ? "challenger-active-card border-2 rounded-2xl p-5 shadow-2xl transition-all" 
+          : "bg-slate-900/50 border border-slate-800 rounded-2xl p-5 shadow-md transition-all hover:border-slate-700/80";
+
+        let challengerBadge = "";
+        let challengerActionBtn = "";
+
+        // 관리자용 챌린저 승격 전용 버튼 활성
+        let adminForceChallengerBtn = "";
+        if (isAdminMode && !isChallenger) {
+          adminForceChallengerBtn = `
+            <button onclick="adminForceChallenger('${subject}')" class="px-2 py-1 bg-yellow-500 hover:bg-yellow-400 text-slate-950 text-[9px] font-black rounded transition-all ml-2">
+              ⚡ 챌린저 치트 승격
+            </button>
+          `;
+        }
+
+        if (isChallenger) {
+          challengerBadge = `<span class="px-3 py-1 text-xs font-black rounded-full bg-gradient-to-r from-amber-500 to-rose-500 text-slate-950 animate-pulse">🏆 챌린저 리그 최종 달성</span>`;
+        } else if (allChaptersMaster) {
+          challengerBadge = `<span class="px-2.5 py-0.5 text-[10px] font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-full animate-bounce">🔥 챌린저 승급 관문 해금</span>`;
+          challengerActionBtn = `
+            <button onclick="startChallengerChallenge('${subject}')" class="px-4 py-2.5 bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 text-white font-black text-xs rounded-xl shadow-lg transition-all transform hover:scale-[1.02]">
+              👑 챌린저 승급 통합 평가 개시 (50문항)
+            </button>
+          `;
+        }
+
+        card.innerHTML = `
+          <div class="flex justify-between items-center cursor-pointer">
+            <div class="flex items-center space-x-3" onclick="toggleSubjectAccordion('${subject}')">
+              <span class="text-2xl">${isChallenger ? '🏆' : '📂'}</span>
+              <div>
+                <h4 class="text-base font-black text-white flex flex-wrap items-center gap-1.5">
+                  <span>${subject}</span>
+                  ${challengerBadge}
+                </h4>
+                <p class="text-[11px] text-slate-400">총 ${chaptersList.length}개 단원 연동 수련 현황</p>
+              </div>
+            </div>
+            <div class="flex items-center space-x-2">
+              ${adminForceChallengerBtn}
+              <span class="text-slate-400 text-xs" onclick="toggleSubjectAccordion('${subject}')">${isOpen ? '닫기 ▲' : '열기 ▼'}</span>
+            </div>
+          </div>
+
+          <div class="${isOpen ? 'block' : 'hidden'} mt-5 pt-4 border-t border-slate-800/80 space-y-4">
+            ${challengerActionBtn ? `<div class="p-3.5 bg-slate-950/60 border border-purple-500/20 rounded-xl flex justify-between items-center">${challengerActionBtn} <span class="text-[10px] text-slate-400">※ 45문제 이상 정답 시 합격</span></div>` : ''}
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              ${chaptersList.map(item => {
+                const state = item.state;
+                const nextRank = getNextRank(state.tier);
+                const xpProgressPercent = state.promotionReady ? 100 : Math.min((state.xp / 10) * 100, 100);
+
+                let adminPromoteBtn = "";
+                if (isAdminMode) {
+                  adminPromoteBtn = `
+                    <button onclick="adminInstantPromote('${item.key}')" class="px-2 py-0.5 bg-yellow-500 text-slate-950 font-black rounded text-[9px] hover:bg-yellow-400 transition-all shadow">
+                      ⚡ 강제 승격
+                    </button>
+                  `;
+                }
+
+                let xpAreaHtml = "";
+                if (state.tier === "마스터") {
+                  xpAreaHtml = `
+                    <div class="py-2 text-center bg-fuchsia-950/25 border border-fuchsia-500/20 rounded-xl text-fuchsia-400 text-[10px] font-black tracking-wider animate-pulse">
+                      ✨ MASTER TIER MAX LEVEL ✨
+                    </div>
+                  `;
+                } else {
+                  xpAreaHtml = `
+                    <div class="space-y-1">
+                      <div class="flex justify-between text-[9px] font-mono">
+                        <span class="text-slate-500">훈련 경험치</span>
+                        <span class="text-indigo-400">${state.promotionReady ? '10/10' : `${state.xp}/10`} XP</span>
+                      </div>
+                      <div class="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden">
+                        <div class="h-full bg-indigo-500 rounded-full" style="width: ${xpProgressPercent}%"></div>
+                      </div>
+                    </div>
+                  `;
+                }
+
+                return `
+                  <div class="bg-slate-950/80 p-4 rounded-xl border ${state.promotionReady ? 'border-amber-500/40 ring-1 ring-amber-500/20 shadow-md shadow-amber-500/5' : 'border-slate-800'} space-y-3">
+                    <div class="flex justify-between items-start">
+                      <h5 class="text-xs font-bold text-slate-200 truncate max-w-[70%]">${state.chapter}</h5>
+                      <div class="flex items-center space-x-1.5 flex-shrink-0">
+                        <span class="px-2 py-0.5 text-[9px] font-black rounded ${TIER_COLORS[state.tier]}">${state.tier}</span>
+                        ${adminPromoteBtn}
+                      </div>
+                    </div>
+
+                    ${xpAreaHtml}
+
+                    <div class="flex justify-between items-center pt-1.5 text-[10px]">
+                      <span class="text-slate-500">
+                        ${state.tier === "마스터"
+                          ? `<span class="text-fuchsia-400 font-bold">마스터 도달 완료</span>`
+                          : (state.promotionReady 
+                              ? `<span class="text-amber-400 font-bold animate-pulse">🔥 관문 승급 도전 개방</span>` 
+                              : `다음 단계: ${nextRank}`)
+                        }
+                      </span>
+                      ${state.promotionReady && state.tier !== "마스터"
+                        ? `<button onclick="startPromotionChallenge('${item.key}')" class="px-2.5 py-1 bg-amber-500 text-slate-950 font-bold rounded text-[9px] hover:bg-amber-400 transition-all shadow-md shadow-amber-500/10">승급 평가 시작</button>`
+                        : ''
+                      }
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+        accordionContainer.appendChild(card);
+      });
+    }
+
+    // 2. 퀴즈 빌더 설정 렌더링 (가상 챌린저 챕터 동적 가공 반영)
+    function renderGenerateTab() {
+      const subSelect = document.getElementById('gen-subject-select');
+      if (!subSelect) return;
+      subSelect.innerHTML = '';
+
+      const placeholder = document.createElement('option');
+      placeholder.value = "";
+      placeholder.textContent = "== 수련할 과목 선택 ==";
+      subSelect.appendChild(placeholder);
+
+      Object.keys(studySubjects).forEach(subId => {
+        const sub = studySubjects[subId];
+        const opt = document.createElement('option');
+        opt.value = subId;
+        opt.textContent = sub.name;
+        subSelect.appendChild(opt);
+      });
+
+      onGenSubjectSelectChange();
+    }
+
+    window.onGenSubjectSelectChange = function() {
+      const subSelect = document.getElementById('gen-subject-select');
+      const chapSelect = document.getElementById('gen-chapter-select');
+      if (!subSelect || !chapSelect) return;
+
+      chapSelect.innerHTML = '';
+      const subId = subSelect.value;
+      if (!subId || !studySubjects[subId]) {
+        const placeholder = document.createElement('option');
+        placeholder.value = "";
+        placeholder.textContent = "== 과목을 먼저 지정하세요 ==";
+        chapSelect.appendChild(placeholder);
+        window.updateGenerateTypeLock();
+        return;
+      }
+
+      const sub = studySubjects[subId];
+      const chaptersKeys = Object.keys(sub.chapters || {});
+
+      if (chaptersKeys.length === 0) {
+        const placeholder = document.createElement('option');
+        placeholder.value = "";
+        placeholder.textContent = "== 단원 없음 (과목 관리에서 추가) ==";
+        chapSelect.appendChild(placeholder);
+        window.updateGenerateTypeLock();
+        return;
+      }
+
+      chaptersKeys.forEach(k => {
+        const chap = sub.chapters[k];
+        const opt = document.createElement('option');
+        opt.value = k;
+        opt.textContent = chap.name;
+        chapSelect.appendChild(opt);
+      });
+
+      // 🏆 지능형 챌린저 관문 감지 모듈
+      // 과목 내 모든 단원이 "마스터" 랭크인 경우, 특수 가상 챌린저 옵션 추가
+      let subjectChapters = Object.keys(chaptersState).filter(k => chaptersState[k].subject === sub.name);
+      let isAllChaptersMaster = subjectChapters.length > 0 && subjectChapters.every(k => chaptersState[k].tier === "마스터");
+
+      if (isAllChaptersMaster) {
+        const challengerOpt = document.createElement('option');
+        challengerOpt.value = "challenger_virtual";
+        challengerOpt.textContent = "🏆 [통합] 챌린저 리그 최종 관문 평가 (50문항)";
+        chapSelect.appendChild(challengerOpt);
+      }
+
+      window.updateGenerateTypeLock();
+    };
+
+    window.updateGenerateTypeLock = function() {
+      const subSelect = document.getElementById('gen-subject-select');
+      const chapSelect = document.getElementById('gen-chapter-select');
+      if (!subSelect || !chapSelect) return;
+      
+      const subId = subSelect.value;
+      const chapId = chapSelect.value;
+      
+      const realBtn = document.getElementById('type-btn-real');
+      const realTitleLbl = document.getElementById('real-btn-title-lbl');
+      const realCountLbl = document.getElementById('real-btn-count-lbl');
+      const alertText = document.getElementById('real-type-alert-text');
+
+      if (!subId || !chapId || !studySubjects[subId]) {
+        if (realBtn) realBtn.disabled = true;
+        window.setGenType('practice');
+        return;
+      }
+
+      const sub = studySubjects[subId];
+      
+      // 가상 챌린저 선택 조건 처리
+      if (chapId === "challenger_virtual") {
+        if (realBtn) {
+          realBtn.disabled = false;
+          realBtn.className = "p-4 rounded-xl border-2 border-amber-500 bg-amber-500/5 text-left cursor-pointer shadow-lg shadow-amber-500/5";
+        }
+        if (realTitleLbl) {
+          realTitleLbl.className = "text-xs font-bold text-amber-400 flex items-center justify-between";
+          realTitleLbl.innerHTML = "<span>🏆 통합 챌린저 최종 자격 관문</span>";
+        }
+        if (realCountLbl) {
+          realCountLbl.className = "text-[10px] bg-amber-500/20 px-2 py-0.5 rounded text-amber-300";
+          realCountLbl.textContent = "50문항";
+        }
+        window.setGenType('real');
+        if (alertText) alertText.innerHTML = `<span class="text-amber-400 font-bold animate-pulse">👑 챌린저 전용 마스터 자격 검증! 50문항 올인원 통합 평가가 잠금 해제되었습니다.</span>`;
+        return;
+      }
+
+      const chap = sub.chapters[chapId];
+      if (!chap) {
+        if (realBtn) realBtn.disabled = true;
+        window.setGenType('practice');
+        return;
+      }
+
+      const materialKey = `${sub.name}___${chap.name}`;
+      const state = chaptersState[materialKey];
+      const isSelectedChapterMaster = state && state.tier === "마스터";
+
+      if (state && state.promotionReady && !isSelectedChapterMaster) {
+        if (realBtn) {
+          realBtn.disabled = false;
+          realBtn.className = "p-4 rounded-xl border-2 border-amber-500 bg-amber-500/5 text-left cursor-pointer shadow-lg shadow-amber-500/5";
+        }
+        if (realTitleLbl) {
+          realTitleLbl.className = "text-xs font-bold text-amber-400 flex items-center justify-between";
+          realTitleLbl.textContent = "🔥 실전 관문 승급 평가";
+        }
+        if (realCountLbl) {
+          realCountLbl.className = "text-[10px] bg-amber-500/20 px-2 py-0.5 rounded text-amber-300";
+          realCountLbl.textContent = "20문항";
+        }
+        if (alertText) alertText.innerHTML = `<span class="text-amber-400 font-bold animate-pulse">🔥 승급전 자격 획득! 실전 퀴즈 응시가 허용됩니다.</span>`;
+      } else {
+        if (realBtn) {
+          realBtn.disabled = true;
+          realBtn.className = "p-4 rounded-xl border border-slate-800 bg-slate-950 text-left cursor-not-allowed";
+        }
+        if (realTitleLbl) realTitleLbl.className = "text-xs font-bold text-slate-600 flex items-center justify-between";
+        if (realCountLbl) {
+          realCountLbl.className = "text-[10px] bg-slate-900 px-2 py-0.5 rounded text-slate-600";
+          realCountLbl.textContent = "20문항";
+        }
+        window.setGenType('practice'); 
+        if (alertText) {
+          if (isSelectedChapterMaster) {
+            alertText.textContent = "※ 이 단원은 이미 최고 단계인 마스터 레벨에 도달했습니다. 전단원 마스터 도달 시 통합 챌린저 자격증 시험이 개시됩니다.";
+          } else {
+            alertText.textContent = "※ 연습문제 학습 경험치(10 XP)가 축적되면 실전 평가 승급 모드가 자동으로 오픈됩니다.";
+          }
+        }
+      }
+    };
+
+    window.setGenType = function(type) {
+      selectedGenType = type;
+      const pracBtn = document.getElementById('type-btn-practice');
+      const realBtn = document.getElementById('type-btn-real');
+      const buildBtnText = document.getElementById('build-btn-text');
+      
+      const chapSelect = document.getElementById('gen-chapter-select');
+      const isChallengerActive = chapSelect && chapSelect.value === "challenger_virtual";
+
+      if (type === "practice") {
+        if (pracBtn) pracBtn.className = "p-4 rounded-xl border-2 border-indigo-500 bg-indigo-500/5 text-left shadow-lg shadow-indigo-500/5";
+        if (realBtn && !realBtn.disabled) {
+          realBtn.className = "p-4 rounded-xl border border-slate-800 bg-slate-950 text-left cursor-pointer";
+        }
+        if (buildBtnText) buildBtnText.textContent = "✨ AI 연습문제 10문항 즉시 빌드";
+      } else {
+        if (pracBtn) pracBtn.className = "p-4 rounded-xl border border-slate-800 bg-slate-950 text-left cursor-pointer";
+        if (realBtn) realBtn.className = "p-4 rounded-xl border-2 border-amber-500 bg-amber-500/5 text-left shadow-lg shadow-amber-500/5";
+        
+        if (buildBtnText) {
+          buildBtnText.textContent = isChallengerActive ? "🏆 통합 챌린저 실전 50문항 전면 평가" : "🔥 실전 등급 승급전 20문항 빌드";
+        }
+      }
+    };
+
+    // ==================== [자격 증명 및 설정 로직 모듈] ====================
+    window.togglePasswordVisibility = function(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.type = el.type === "password" ? "text" : "password";
+    };
+
+    function loadCustomCredentialsToUI() {
+      const geminiInput = document.getElementById('custom-gemini-key-input');
+      const firebaseInput = document.getElementById('custom-firebase-config-input');
+      
+      if (geminiInput) {
+        geminiInput.value = localStorage.getItem("custom_gemini_api_key") || "";
+      }
+      if (firebaseInput) {
+        firebaseInput.value = localStorage.getItem("custom_firebase_config") || "";
+      }
+    }
+
+    window.saveCustomCredentials = function() {
+      const geminiVal = document.getElementById('custom-gemini-key-input')?.value.trim() || "";
+      const firebaseVal = document.getElementById('custom-firebase-config-input')?.value.trim() || "";
+
+      if (geminiVal) {
+        localStorage.setItem("custom_gemini_api_key", geminiVal);
+      } else {
+        localStorage.removeItem("custom_gemini_api_key");
+      }
+
+      if (firebaseVal) {
+        try {
+          JSON.parse(firebaseVal); 
+          localStorage.setItem("custom_firebase_config", firebaseVal);
+        } catch (e) {
+          window.openAlert("입력 규격 에러", "Firebase Config 형식이 올바른 JSON 형태가 아닙니다. 다시 확인해 주세요.");
+          return;
+        }
+      } else {
+        localStorage.removeItem("custom_firebase_config");
+      }
+
+      window.openAlert("설정 저장 완료", "개인 API 정보가 암호 보존 처리되었습니다. 변경된 설정을 완벽하게 활성화하기 위해 사이트를 새로고침합니다.");
+      setTimeout(() => {
+        location.reload();
+      }, 1000);
+    };
+
+    window.clearCustomCredentials = function() {
+      localStorage.removeItem("custom_gemini_api_key");
+      localStorage.removeItem("custom_firebase_config");
+      window.openAlert("초기화 완료", "개인 외부 설정이 파기되었습니다. 기본 Canvas 프리셋 계정으로 복구 연동하기 위해 사이트를 새로고침합니다.");
+      setTimeout(() => {
+        location.reload();
+      }, 1000);
+    };
+    // ==================== [자격 증명 모듈 끝] ====================
+
+    window.cancelUploadedFile = function() {
+      genFileContent = "";
+      const fileInput = document.getElementById('gen-file-input');
+      if (fileInput) fileInput.value = "";
+      
+      const fileStatus = document.getElementById('gen-file-status');
+      if (fileStatus) {
+        fileStatus.textContent = "드래그 혹은 클릭하여 첨부";
+      }
+
+      const cancelPanel = document.getElementById('file-cancel-panel');
+      if (cancelPanel) cancelPanel.classList.add('hidden');
+    };
+
+    // Client-side PDF Parser Module
+    async function extractTextFromPDF(arrayBuffer) {
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let fullText = "";
+      const maxPages = Math.min(pdf.numPages, 30); 
+      for (let i = 1; i <= maxPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map(item => item.str).join(" ");
+        fullText += `\n[Page ${i}]\n` + pageText;
+      }
+      return fullText;
+    }
+
+    // Client-side PPTX Slide Reader Module
+    async function extractTextFromPPTX(arrayBuffer) {
+      const zip = await JSZip.loadAsync(arrayBuffer);
+      let fullText = "";
+      let slideIndex = 1;
+      
+      while (true) {
+        const slideFile = zip.file(`ppt/slides/slide${slideIndex}.xml`);
+        if (!slideFile) break;
+        
+        const xmlText = await slideFile.async("text");
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xmlText, "application/xml");
+        const textNodes = xmlDoc.getElementsByTagName("a:t");
+        let slideText = Array.from(textNodes).map(node => node.textContent).join(" ");
+        
+        fullText += `\n[Slide ${slideIndex}]\n` + slideText;
+        slideIndex++;
+        if (slideIndex > 60) break; 
+      }
+      return fullText;
+    }
+
+    async function handleFileSelect(file) {
+      if (!file) return;
+
+      const fileStatus = document.getElementById('gen-file-status');
+      const cancelPanel = document.getElementById('file-cancel-panel');
+      const cancelFileName = document.getElementById('cancel-file-name-label');
+
+      if (fileStatus) {
+        fileStatus.innerHTML = `
+          <div class="flex items-center space-x-1 text-indigo-400 justify-center">
+            <span>디코딩 분석 중...</span>
+          </div>`;
+      }
+
+      try {
+        const ext = file.name.split('.').pop().toLowerCase();
+        let extractedText = "";
+
+        if (ext === 'html' || ext === 'txt') {
+          const reader = new FileReader();
+          extractedText = await new Promise((resolve) => {
+            reader.onload = (e) => resolve(e.target.result);
+            reader.readAsText(file);
+          });
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = extractedText;
+          extractedText = tempDiv.textContent || tempDiv.innerText || "";
+        } else if (ext === 'pdf') {
+          const buffer = await file.arrayBuffer();
+          extractedText = await extractTextFromPDF(buffer);
+        } else if (ext === 'pptx') {
+          const buffer = await file.arrayBuffer();
+          extractedText = await extractTextFromPPTX(buffer);
+        } else {
+          throw new Error("HTML, TXT, PDF, PPTX 형식만 지원합니다.");
+        }
+
+        if (!extractedText || extractedText.trim().length === 0) {
+          throw new Error("학습 지식 데이터 추출 요소를 검출하지 못했습니다.");
+        }
+
+        genFileContent = extractedText;
+
+        if (fileStatus) {
+          fileStatus.textContent = "디코딩 성공!";
+        }
+
+        if (cancelPanel && cancelFileName) {
+          cancelFileName.textContent = file.name;
+          cancelPanel.classList.remove('hidden');
+        }
+
+      } catch (err) {
+        console.error(err);
+        window.openAlert("파일 분석 에러", err.message);
+        window.cancelUploadedFile();
+      }
+    }
+
+    // AI 문제지 출제 생성 실행기
+    async function handleBuildQuiz() {
+      const subSelect = document.getElementById('gen-subject-select');
+      const chapSelect = document.getElementById('gen-chapter-select');
+      if (!subSelect || !chapSelect) return;
+
+      const subId = subSelect.value;
+      const chapId = chapSelect.value;
+
+      if (!subId || !chapId) {
+        window.openAlert("수련 범위 미선택", "출제할 과목과 챕터를 지정해 주세요.");
+        return;
+      }
+
+      const sub = studySubjects[subId];
+      if (!sub) return;
+
+      const isChallenger = (chapId === "challenger_virtual");
+      let selectedChapterName = "";
+      let combinedText = "";
+
+      if (isChallenger) {
+        selectedChapterName = "🏆 챌린저 리그 최종 평가";
+        
+        // 과목에 수록된 모든 단원의 원문 교안 텍스트를 하나로 합침
+        let mergedTexts = [];
+        Object.keys(sub.chapters || {}).forEach(cId => {
+          const cObj = sub.chapters[cId];
+          const materialKey = `${sub.name}___${cObj.name}`;
+          if (studyMaterials[materialKey] && studyMaterials[materialKey].contents) {
+            mergedTexts.push(`[단원명: ${cObj.name}]\n` + studyMaterials[materialKey].contents.join("\n"));
+          }
+        });
+        combinedText = mergedTexts.join("\n\n=== [단원교체 분계 지점] ===\n\n");
+      } else {
+        const chap = sub.chapters[chapId];
+        if (!chap) return;
+        selectedChapterName = chap.name;
+        const materialKey = `${sub.name}___${chap.name}`;
+        const currentMaterial = studyMaterials[materialKey];
+        if (!currentMaterial || !currentMaterial.contents || currentMaterial.contents.length === 0) {
+          window.openAlert("교안 분석 필요", "해당 단원의 전공 텍스트를 연동해 주세요.");
+          return;
+        }
+        combinedText = currentMaterial.contents.join("\n\n=== [단원 추가 지식] ===\n\n");
+      }
+
+      const isChallengerCleared = subjectChallengerState[sub.name] === true;
+      if (isChallenger && isChallengerCleared && selectedGenType === "real") {
+        window.openAlert("접근 제한", "이미 이 과목의 [🏆 챌린저] 최종 자격을 획득하셨습니다.");
+        return;
+      }
+
+      const buildQuizBtn = document.getElementById('build-quiz-btn');
+      const genLoadingSpinner = document.getElementById('gen-loading-spinner');
+      if (buildQuizBtn) buildQuizBtn.classList.add('hidden');
+      if (genLoadingSpinner) {
+        genLoadingSpinner.classList.remove('hidden');
+        document.getElementById('gen-spinner-main-txt').textContent = isChallenger 
+          ? "모든 단원의 교안 소스를 다차원으로 종합 분석하는 중..." 
+          : "단원 타겟 지능형 분석 및 기획 중...";
+      }
+
+      // 최종 문항 개수 정위화
+      let count = 10;
+      if (selectedGenType === "real") {
+        count = isChallenger ? 50 : 20;
+      }
+      const typeStr = isChallenger ? "챌린저 통합 평가" : (selectedGenType === "real" ? "실전 평가" : "연습 학습");
+
+      const systemPrompt = "당신은 기계학습 및 컴퓨터 사이언스 시험 설계 교수입니다. 오직 제공된 소스 텍스트 내부의 공식, 지표, 데이터 명세만을 절대적으로 기반하여 출제해야 합니다.";
+      const prompt = `
+        과목명: ${sub.name}
+        단원 수련 범위: ${selectedChapterName}
+        유형: ${typeStr} (반드시 정확하게 총 ${count}문항으로 구성해야 합니다.)
+
+        [출제 지침 - 중요]
+        1. 아래 제공되는 [교안 병합 정보] 내부에 존재하는 실질적인 수식 정의, 파라미터 조건, 텍스트 핵심 내용만을 100% 활용하여 문제를 출제하십시오. 교안 정보에 없는 사실을 상상하거나 임의로 외부 일반 기계학습 시험 문제를 가져오지 마십시오.
+        2. 보기 4개는 확실하고 교육적인 변별력을 가지도록 한글로 기술하고, 정답 인덱스(0, 1, 2, 3)를 정확히 명시해 주세요.
+        
+        [교안 병합 정보]
+        ${combinedText.substring(0, 18500)}
+      `;
+
+      try {
+        const responseJsonStr = await callGemini(prompt, systemPrompt, true);
+        const parsedData = JSON.parse(responseJsonStr);
+
+        if (!parsedData.questions || parsedData.questions.length === 0) {
+          throw new Error("AI 퀴즈 빌드 결과물이 안전하지 않습니다.");
+        }
+
+        const validatedQuestions = parsedData.questions.slice(0, count).map((q, idx) => {
+          q.id = idx + 1;
+          return q;
+        });
+
+        const newSheetId = "sheet_" + Date.now();
+        const newQuizSheet = {
+          id: newSheetId,
+          title: parsedData.title || `${sub.name} [${selectedChapterName}] ${typeStr} 문제지`,
+          subject: sub.name,
+          chapter: selectedChapterName,
+          category: selectedChapterName,
+          type: selectedGenType,
+          isChallenger: isChallenger,
+          createdDate: new Date().toISOString().split('T')[0],
+          score: null,
+          questions: validatedQuestions,
+          isSolved: false 
+        };
+
+        quizSheets.push(newQuizSheet);
+        window.saveStorage();
+
+        window.startQuizSheet(newSheetId);
+
+      } catch (error) {
+        window.openAlert("출제 장애", `AI 퀴즈 생성 중 오류가 발생했습니다: ${error.message}`);
+      } finally {
+        if (buildQuizBtn) buildQuizBtn.classList.remove('hidden');
+        if (genLoadingSpinner) genLoadingSpinner.classList.add('hidden');
+        renderGenerateTab();
+      }
+    }
+
+    function handleGenFileInput(e) {
+      const file = e.target.files[0];
+      handleFileSelect(file);
+    }
+
+    function renderStorageTab() {
+      const subjectSidebar = document.getElementById('storage-subject-list');
+      if (!subjectSidebar) return;
+      subjectSidebar.innerHTML = '';
+
+      const subjectsList = new Set();
+      quizSheets.forEach(sheet => {
+        if (sheet.subject) subjectsList.add(sheet.subject);
+      });
+
+      const allSubBtn = document.createElement('button');
+      allSubBtn.className = `w-full text-left px-3 py-2 text-xs font-bold rounded-lg transition-all ${activeFilterSubject === "ALL" ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`;
+      allSubBtn.textContent = "전체 과목 보기";
+      allSubBtn.onclick = function() {
+        activeFilterSubject = "ALL";
+        activeFilterChapter = "ALL";
+        renderStorageTab();
+      };
+      subjectSidebar.appendChild(allSubBtn);
+
+      subjectsList.forEach(sub => {
+        const btn = document.createElement('button');
+        btn.className = `w-full text-left px-3 py-2 text-xs font-bold rounded-lg transition-all truncate ${activeFilterSubject === sub ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`;
+        btn.textContent = sub;
+        btn.onclick = function() {
+          activeFilterSubject = sub;
+          activeFilterChapter = "ALL"; 
+          renderStorageTab();
+        };
+        subjectSidebar.appendChild(btn);
+      });
+
+      const chapterTabBar = document.getElementById('storage-chapter-tabs-bar');
+      if (chapterTabBar) {
+        chapterTabBar.innerHTML = '';
+        
+        if (activeFilterSubject === "ALL") {
+          chapterTabBar.innerHTML = `<span class="text-xs text-slate-500 px-2 font-medium">과목을 선택하면 단원별 분류 필터가 활성화됩니다.</span>`;
+        } else {
+          const chaptersList = new Set();
+          quizSheets.forEach(sheet => {
+            if (sheet.subject === activeFilterSubject && sheet.chapter) {
+              chaptersList.add(sheet.chapter);
+            }
+          });
+
+          const allChBtn = document.createElement('button');
+          allChBtn.className = `px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${activeFilterChapter === "ALL" ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'text-slate-400 hover:bg-slate-900 border border-transparent'}`;
+          allChBtn.textContent = "단원 전체";
+          allChBtn.onclick = function() {
+            activeFilterChapter = "ALL";
+            window.applyStorageFilter();
+            renderStorageTab();
+          };
+          chapterTabBar.appendChild(allChBtn);
+
+          chaptersList.forEach(ch => {
+            const btn = document.createElement('button');
+            btn.className = `px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${activeFilterChapter === ch ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'text-slate-400 hover:bg-slate-900 border border-transparent'}`;
+            btn.textContent = ch;
+            btn.onclick = function() {
+              activeFilterChapter = ch;
+              window.applyStorageFilter();
+              renderStorageTab();
+            };
+            chapterTabBar.appendChild(btn);
+          });
+        }
+      }
+
+      window.applyStorageFilter();
+    }
+
+    window.applyStorageFilter = function() {
+      const grid = document.getElementById('storage-sheets-grid');
+      if (!grid) return;
+      grid.innerHTML = '';
+
+      const filteredSheets = quizSheets.filter(sheet => {
+        const matchSub = (activeFilterSubject === "ALL" || sheet.subject === activeFilterSubject);
+        const matchCh = (activeFilterChapter === "ALL" || sheet.chapter === activeFilterChapter);
+        return matchSub && matchCh;
+      });
+
+      if (filteredSheets.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-2 text-center py-10 text-slate-500 text-xs">
+            현재 탭 범위 내에 보관된 문제지가 없습니다.
+          </div>
+        `;
+        return;
+      }
+
+      filteredSheets.forEach(sheet => {
+        const isSolved = sheet.score !== null;
+        const isReal = sheet.type === "real";
+        const isChallenger = sheet.isChallenger === true;
+        const card = document.createElement('div');
+        
+        card.className = `p-5 rounded-2xl border bg-slate-900/40 hover:bg-slate-900 transition-all flex flex-col justify-between space-y-4 animate-scaleUp ${isChallenger ? 'border-amber-500/40 shadow-lg' : (isReal ? 'border-indigo-500/20' : 'border-slate-800')}`;
+
+        let quizActionBtn = "";
+        if (isSolved && isReal) {
+          quizActionBtn = `<span class="text-[10px] text-slate-500 font-bold bg-slate-950 p-2 rounded-lg border border-slate-850">🔒 승급전 종료</span>`;
+        } else {
+          quizActionBtn = `
+            <button onclick="startQuizSheet('${sheet.id}')" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-colors">
+              문제 풀기
+            </button>
+          `;
+        }
+
+        card.innerHTML = `
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="px-2 py-0.5 text-[9px] font-bold rounded ${isChallenger ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : (isReal ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-slate-800 text-slate-300 border border-slate-700')}">
+                ${isChallenger ? '🏆 챌린저 통합' : (isReal ? '🔥 실전 승급전' : '📚 연습 학습')}
+              </span>
+              <div class="flex items-center space-x-1.5">
+                <span class="text-[10px] text-slate-500 font-mono">${sheet.createdDate}</span>
+                <button onclick="deleteQuizSheet('${sheet.id}')" class="text-slate-500 hover:text-rose-400 transition-colors" title="기출 정보 영구 삭제">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                </button>
+              </div>
+            </div>
+            <h4 class="text-sm font-bold text-white tracking-tight leading-snug">${sheet.title}</h4>
+            <div class="text-[11px] text-slate-400">
+              과목: ${sheet.subject} | 단원: ${sheet.chapter}
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between pt-3 border-t border-slate-800/60">
+            <span class="text-xs font-bold ${isSolved ? 'text-emerald-400' : 'text-amber-500/70'}">
+              ${isSolved ? `성적: ${sheet.score}/${isChallenger ? '500' : (isReal ? '200' : '100')}점` : '진행 대기 중'}
+            </span>
+            <div class="flex items-center space-x-1.5">
+              ${quizActionBtn}
+              ${isSolved 
+                ? `<button onclick="showPastReport('${sheet.id}')" class="px-3.5 py-2 bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 text-xs font-bold rounded-lg transition-colors">결과 분석표</button>` 
+                : ''
+              }
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    window.deleteQuizSheet = function(sheetId) {
+      const target = quizSheets.find(s => s.id === sheetId);
+      const title = target ? target.title : "선택한 문제지";
+      
+      window.openConfirmModal(
+        "기출 학습 데이터 폐기",
+        `"${title}"을 영구히 파기 처리할까요?`,
+        () => {
+          quizSheets = quizSheets.filter(s => s.id !== sheetId);
+          window.saveStorage();
+          renderStorageTab();
+          
+          const totalQuizzes = quizSheets.length;
+          const profileStatsQuizzes = document.getElementById('profile-stats-quizzes');
+          if (profileStatsQuizzes) profileStatsQuizzes.textContent = totalQuizzes;
+        },
+        "삭제"
+      );
+    };
+
+    window.startQuizSheet = function(sheetId) {
+      activeSheet = quizSheets.find(s => s.id === sheetId);
+      if (!activeSheet) return;
+
+      currentQuestionIndex = 0;
+      tempAnswers = Array.from({ length: activeSheet.questions.length }, () => ({
+        chosen: null,
+        isSubmitted: false
+      }));
+
+      if (feedbackBox) feedbackBox.classList.add('hidden');
+      if (aiQuizResponsePanel) aiQuizResponsePanel.classList.add('hidden');
+      if (aiQuizResponseContent) aiQuizResponseContent.innerHTML = '';
+
+      if (homeView) homeView.classList.add('hidden');
+      if (quizView) quizView.classList.remove('hidden');
+      if (resultView) resultView.classList.add('hidden');
+      
+      const titleLabel = document.getElementById('quiz-title-label');
+      if (titleLabel) titleLabel.textContent = activeSheet.title;
+      
+      renderNavButtons();
+      loadQuestion();
+    };
+
+    function renderNavButtons() {
+      if (!navNumContainer) return;
+      navNumContainer.innerHTML = '';
+
+      activeSheet.questions.forEach((q, idx) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = getNavButtonClass(idx);
+        btn.textContent = idx + 1;
+        btn.addEventListener('click', () => {
+          jumpToQuestion(idx);
+        });
+        navNumContainer.appendChild(btn);
+      });
+    }
+
+    function getNavButtonClass(idx) {
+      const ansState = tempAnswers[idx];
+      const baseClass = "w-8 h-8 rounded-lg font-bold text-xs transition-all flex items-center justify-center font-mono border flex-shrink-0 ";
+      const isReal = activeSheet.type === "real";
+      
+      if (idx === currentQuestionIndex) {
+        return baseClass + "bg-indigo-600 border-indigo-400 text-white ring-2 ring-indigo-500/30 shadow-lg";
+      }
+      
+      if (ansState.isSubmitted) {
+        if (isReal) {
+          return baseClass + "bg-slate-700 border-slate-600 text-slate-200";
+        }
+        const isCorrect = ansState.chosen === activeSheet.questions[idx].answer;
+        return isCorrect 
+          ? baseClass + "bg-emerald-500/20 border-emerald-500/40 text-emerald-400" 
+          : baseClass + "bg-rose-500/20 border-rose-500/40 text-rose-400";
+      }
+
+      if (ansState.chosen !== null) {
+        return baseClass + "bg-slate-800 border-slate-700 text-slate-300";
+      }
+
+      return baseClass + "bg-slate-950 border-slate-850 text-slate-500 hover:border-slate-700";
+    }
+
+    function jumpToQuestion(targetIdx) {
+      currentQuestionIndex = targetIdx;
+      
+      if (feedbackBox) feedbackBox.classList.add('hidden');
+      if (aiQuizResponsePanel) aiQuizResponsePanel.classList.add('hidden');
+      if (aiQuizResponseContent) aiQuizResponseContent.innerHTML = '';
+
+      renderNavButtons();
+      loadQuestion();
+    }
+
+    window.navigatePrev = function() {
+      if (currentQuestionIndex > 0) jumpToQuestion(currentQuestionIndex - 1);
+    };
+
+    window.navigateNext = function() {
+      if (currentQuestionIndex < activeSheet.questions.length - 1) {
+        jumpToQuestion(currentQuestionIndex + 1);
+      }
+    };
+
+    window.submitEntireQuizSheet = function() {
+      const unanswered = tempAnswers.filter(ans => ans.chosen === null).length;
+      if (unanswered > 0) {
+        window.openConfirmModal(
+          "미선택 답안 기재 상태",
+          `아직 작성하지 않은 문항이 ${unanswered}개 존재합니다. 그대로 채점할까요?`,
+          () => {
+            applyGamificationRules();
+          },
+          "제출 채점"
+        );
+      } else {
+        applyGamificationRules();
+      }
+    };
+
+    function applyGamificationRules() {
+      const materialKey = `${activeSheet.subject}___${activeSheet.chapter}`;
+      const isChallenger = activeSheet.isChallenger === true;
+
+      if (!chaptersState[materialKey] && !isChallenger) {
+        syncChaptersState();
+      }
+
+      const state = chaptersState[materialKey];
+      const isReal = activeSheet.type === "real";
+      
+      let correctCount = 0;
+      activeSheet.questions.forEach((q, idx) => {
+        if (tempAnswers[idx].chosen === q.answer) correctCount++;
+      });
+
+      // 점수 환산
+      const scoreValue = isChallenger ? correctCount * 10 : (isReal ? correctCount * 10 : correctCount * 10);
+      activeSheet.score = scoreValue;
+      activeSheet.isSolved = true; 
+      activeSheet.userAnswers = JSON.parse(JSON.stringify(tempAnswers));
+
+      if (isChallenger) {
+        if (correctCount >= 45) {
+          subjectChallengerState[activeSheet.subject] = true;
+          window.openAlert("👑 챌린저 달성 대성공 👑", `진심으로 존경합니다! ${activeSheet.subject} 과목의 챌린저 승격 전단원 평가(50문항 중 45문항 이상 획득 규칙)를 최종 통과하여 전용 기계학습 마스터 리거 자격을 수여받았습니다.`);
+        } else {
+          window.openAlert("합격선 미달", `아쉽게도 커트라인(50문항 중 45문항 정답 기준)에 도달하지 못해 불합격하셨습니다. 다시 도전해 주세요!`);
+        }
+      }
+      else if (isReal) {
+        if (correctCount >= 15) {
+          const currentRankIdx = RANKS.indexOf(state.tier);
+          if (currentRankIdx < RANKS.length - 1) {
+            state.tier = RANKS[currentRankIdx + 1];
+          }
+          state.xp = 0; 
+          state.promotionReady = false;
+          window.openAlert("★ 등급 승격 성공 ★", `대단히 우수한 전공 학습 결과입니다! 등급이 [${state.tier}] 단계로 상향 조정되었습니다.`);
+        } else {
+          state.xp = Math.max(state.xp - 5, 0);
+          state.promotionReady = false;
+          window.openAlert("승격 도전 실패", `합격 기준선(15문항 정답)에 미달해 승급 관문 통과에 실패했습니다. 단원 복습 후 재기해 주세요.`);
+        }
+      } 
+      else {
+        if (state && state.tier === "마스터") {
+          window.openAlert("최종 등급 완수", "이미 마스터 단계를 완수했습니다. 오개념 교정용으로 다시 정오 원리를 복습해 보세요.");
+        } else if (state) {
+          if (!state.promotionReady) {
+            const prevScore = state.clearedQuizIds[activeSheet.id];
+            
+            if (prevScore === undefined) {
+              state.clearedQuizIds[activeSheet.id] = correctCount;
+              state.xp += correctCount;
+              window.openAlert("자가 수련 완료", `연습 문제 풀이 완료: +${correctCount} XP 경험치가 축적되었습니다.`);
+            } else {
+              if (prevScore === 10) {
+                window.openAlert("중복 획득 불가", "이미 완벽한 만점을 취득했던 수련 문항으로 추가 경험치는 발생하지 않습니다.");
+              } else {
+                if (correctCount === 10) {
+                  state.clearedQuizIds[activeSheet.id] = 10;
+                  state.xp += 1; 
+                  window.openAlert("★ 오개념 정복 보너스 ★", "오답 피드백 복습을 대성공해 보정 경험치 1 XP가 누적됩니다!");
+                } else {
+                  window.openAlert("복습 미완료", "모든 오답을 정오 복구하지 못해 보정 추가 XP는 유보됩니다.");
+                }
+              }
+            }
+
+            if (state.xp >= 10) {
+              state.xp = 10;
+              state.promotionReady = true;
+              window.openAlert("🔥 승급전 문항 인증 관문 오픈", `수고하셨습니다! [${state.chapter}] 단원의 정식 등급 승격 평가가 해방되었습니다.`);
+            }
+          } else {
+            window.openAlert("인증 대기 상태", "현재 랭크 승격 자격 시험 인증 대기 중입니다. 추가 연습 경험치는 발생하지 않습니다.");
+          }
+        }
+      }
+
+      window.saveStorage();
+      showResults();
+
+      if (quizView) quizView.classList.add('hidden');
+      if (resultView) resultView.classList.remove('hidden');
+    }
+
+    function loadQuestion() {
+      const q = activeSheet.questions[currentQuestionIndex];
+      const ansState = tempAnswers[currentQuestionIndex];
+
+      if (questionIndexLabel) questionIndexLabel.textContent = `Q. ${String(q.id).padStart(2, '0')}`;
+      if (categoryLabel) categoryLabel.textContent = q.category || activeSheet.category;
+
+      const solvedCount = tempAnswers.filter(ans => ans.isSubmitted).length;
+      const progressPercent = Math.round((solvedCount / activeSheet.questions.length) * 100);
+      if (progressText) progressText.textContent = `${progressPercent}% 완료 (${solvedCount}/${activeSheet.questions.length} 제출)`;
+
+      if (questionText) questionText.textContent = q.question;
+      if (questionBox) {
+        if (q.boxText) {
+          questionBox.textContent = q.boxText;
+          questionBox.classList.remove('hidden');
+        } else {
+          questionBox.classList.add('hidden');
+        }
+      }
+
+      if (optionsContainer) {
+        optionsContainer.innerHTML = '';
+        q.options.forEach((opt, idx) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = getOptionButtonClass(idx, ansState);
+          btn.innerHTML = `
+            <span class="${getOptionCircleClass(idx, ansState)}">${idx + 1}</span>
+            <span class="text-sm md:text-base leading-relaxed text-left">${opt}</span>
+          `;
+          
+          btn.addEventListener('click', () => {
+            if (!ansState.isSubmitted) {
+              selectOption(idx);
+            }
+          });
+          optionsContainer.appendChild(btn);
+        });
+      }
+
+      const adminBtn = document.getElementById('admin-auto-solve-btn');
+      if (adminBtn) {
+        if (isAdminMode) {
+          adminBtn.classList.remove('hidden');
+        } else {
+          adminBtn.classList.add('hidden');
+        }
+      }
+
+      const nextBtn = document.getElementById('next-btn-text');
+      if (nextBtn) {
+        if (currentQuestionIndex === activeSheet.questions.length - 1) {
+          nextBtn.textContent = "🏁 전체 제출 및 채점";
+          nextBtn.className = "px-4 py-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white text-xs font-black rounded-lg shadow-lg transition-all transform hover:scale-105 active:scale-95";
+          nextBtn.onclick = function() {
+            window.submitEntireQuizSheet();
+          };
+        } else {
+          nextBtn.textContent = "다음 문제";
+          nextBtn.className = "px-4 py-2 bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs font-bold rounded-lg transition-colors";
+          nextBtn.onclick = function() {
+            window.navigateNext();
+          };
+        }
+      }
+
+      updateActionBtnState(ansState);
+    }
+
+    function getOptionButtonClass(idx, ansState) {
+      const baseClass = "w-full text-left p-4 rounded-xl border transition-all duration-150 flex items-start space-x-3 group ";
+      const isReal = activeSheet.type === "real";
+      const q = activeSheet.questions[currentQuestionIndex];
+
+      if (ansState.isSubmitted) {
+        if (isReal) {
+          if (idx === ansState.chosen) {
+            return baseClass + "border-indigo-500/80 bg-indigo-950/20 cursor-default text-indigo-300";
+          }
+          return baseClass + "border-slate-800 bg-slate-900/40 cursor-default text-slate-500";
+        }
+
+        if (idx === q.answer) {
+          return baseClass + "border-emerald-500/80 bg-emerald-500/10 cursor-default text-emerald-400";
+        }
+        if (idx === ansState.chosen) {
+          return baseClass + "border-rose-500/80 bg-rose-500/10 cursor-default text-rose-400";
+        }
+        return baseClass + "border-slate-800 bg-slate-900/40 cursor-default text-slate-500";
+      }
+
+      if (isAdminMode && idx === q.answer) {
+        return baseClass + "border-yellow-500 admin-correct-hint text-yellow-200";
+      }
+
+      if (idx === ansState.chosen) {
+        return baseClass + "border-indigo-500 bg-indigo-500/5 ring-2 ring-indigo-500/20 text-indigo-300";
+      }
+
+      return baseClass + "border-slate-700/60 bg-slate-800/40 hover:bg-slate-800 hover:border-slate-600 text-slate-300";
+    }
+
+    function getOptionCircleClass(idx, ansState) {
+      const baseCircle = "flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full border text-xs font-bold transition-colors font-mono ";
+      const isReal = activeSheet.type === "real";
+      const q = activeSheet.questions[currentQuestionIndex];
+
+      if (ansState.isSubmitted) {
+        if (isReal) {
+          if (idx === ansState.chosen) {
+            return baseCircle + "bg-indigo-600 border-indigo-400 text-white";
+          }
+          return baseCircle + "border-slate-700 bg-slate-950 text-slate-600";
+        }
+
+        if (idx === q.answer) {
+          return baseCircle + "bg-emerald-500 border-emerald-400 text-white";
+        }
+        if (idx === ansState.chosen) {
+          return baseCircle + "bg-rose-500 border-rose-400 text-white";
+        }
+        return baseCircle + "border-slate-700 bg-slate-950 text-slate-600";
+      }
+
+      if (isAdminMode && idx === q.answer) {
+        return baseCircle + "bg-yellow-500 border-yellow-400 text-slate-950";
+      }
+
+      if (idx === ansState.chosen) {
+        return baseCircle + "bg-indigo-600 border-indigo-400 text-white";
+      }
+
+      return baseCircle + "border-slate-600 bg-slate-900 text-slate-400 group-hover:border-indigo-400 group-hover:text-indigo-400";
+    }
+
+    function selectOption(idx) {
+      tempAnswers[currentQuestionIndex].chosen = idx;
+      renderNavButtons();
+      loadQuestion();
+    }
+
+    function updateActionBtnState(ansState) {
+      if (!actionBtn) return;
+      actionBtn.disabled = true;
+      actionBtn.onclick = null;
+      actionBtn.className = "px-6 py-3 bg-slate-700 text-slate-400 font-bold rounded-xl transition-all duration-150 cursor-not-allowed";
+
+      if (ansState.isSubmitted) {
+        actionBtn.className = "px-6 py-3 bg-slate-850 border border-slate-700 text-slate-400 font-bold rounded-xl cursor-default";
+        actionBtn.textContent = "✓ 제출 완료됨";
+        
+        if (activeSheet.type !== "real") {
+          renderFeedbackBox(ansState);
+        }
+        return;
+      }
+
+      if (ansState.chosen !== null) {
+        actionBtn.disabled = false;
+        actionBtn.className = "px-6 py-3 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-bold rounded-xl shadow-lg transition-all";
+        actionBtn.textContent = "단일 문항 채점";
+        actionBtn.onclick = submitSingleQuestionAnswer;
+      } else {
+        actionBtn.textContent = "답안을 선택하세요";
+      }
+    }
+
+    function submitSingleQuestionAnswer() {
+      const idx = currentQuestionIndex;
+      const ansState = tempAnswers[idx];
+      ansState.isSubmitted = true;
+      
+      renderNavButtons();
+      loadQuestion();
+    }
+
+    function renderFeedbackBox(ansState) {
+      if (!feedbackBox || !feedbackIconContainer || !feedbackTitle || !explanationText) return;
+      feedbackBox.classList.remove('hidden');
+      const q = activeSheet.questions[currentQuestionIndex];
+      const isCorrect = (ansState.chosen === q.answer);
+
+      if (isCorrect) {
+        feedbackBox.className = "rounded-xl p-5 border border-emerald-500/30 bg-emerald-500/5 text-emerald-400 animate-fadeIn";
+        feedbackIconContainer.innerHTML = `
+          <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+        feedbackTitle.textContent = "정답입니다!";
+        feedbackTitle.className = "font-bold text-base text-emerald-300";
+      } else {
+        feedbackBox.className = "rounded-xl p-5 border border-rose-500/30 bg-rose-500/5 text-rose-400 animate-fadeIn";
+        feedbackIconContainer.innerHTML = `
+          <svg class="w-6 h-6 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+        feedbackTitle.textContent = "오답입니다.";
+        feedbackTitle.className = "font-bold text-base text-rose-300";
+      }
+
+      explanationText.textContent = q.explanation;
+    }
+
+    function showResults() {
+      if (!resultView) return;
+      
+      const isReal = activeSheet.type === "real";
+      const isChallenger = activeSheet.isChallenger === true;
+      const resTitle = document.getElementById('result-quiz-title');
+      const resSubtitle = document.getElementById('result-quiz-subtitle');
+      if (resTitle) resTitle.textContent = `${activeSheet.title} 리포트`;
+      if (resSubtitle) resSubtitle.textContent = isReal ? "전공 수련 전단원 종합 정오 분석 보고서입니다." : "오답 가이드를 정독하여 취약 단원의 개념 오차를 정정해 보세요.";
+
+      let correctCount = 0;
+      const categoryScores = {};
+
+      activeSheet.questions.forEach((q, idx) => {
+        const ansState = tempAnswers[idx];
+        const isCorrect = (ansState.chosen === q.answer);
+        if (isCorrect) correctCount++;
+
+        const cat = q.category || activeSheet.category;
+        if (!categoryScores[cat]) {
+          categoryScores[cat] = { correct: 0, total: 0 };
+        }
+        categoryScores[cat].total++;
+        if (isCorrect) categoryScores[cat].correct++;
+      });
+
+      const maxLimit = isChallenger ? 50 : (isReal ? 20 : 10);
+
+      const finalScore = document.getElementById('final-score');
+      const finalTotal = document.getElementById('final-total');
+      if (finalScore) finalScore.textContent = correctCount;
+      if (finalTotal) finalTotal.textContent = `/${maxLimit}`;
+
+      let grade = "";
+      let gradeColorClass = "";
+      let desc = "";
+
+      const successRate = (correctCount / maxLimit) * 100;
+
+      if (successRate >= 90) {
+        grade = "A+ 학술적 마스터 클래스";
+        gradeColorClass = "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-lg";
+        desc = "교안의 고난이도 개념 증명과 핵심 알고리즘 유도를 완벽하게 습득하였습니다. 실무 설계 단계 진입을 적극 권장합니다.";
+      } else if (successRate >= 75) {
+        grade = "A- 우수한 전공 공학역량";
+        gradeColorClass = "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30";
+        desc = "전반적으로 우수하고 정밀한 데이터 마이닝 역량을 갖추었습니다. 사소한 오개념들을 정리하면 완벽에 다다를 수 있습니다.";
+      } else if (successRate >= 50) {
+        grade = "B0 직무 핵심 이해 완료";
+        gradeColorClass = "bg-amber-500/20 text-amber-300 border border-amber-500/30";
+        desc = "직무에 요구되는 기본 개념 인프라는 안정적이나, 세부 파라미터 적용 및 예외 처리에 대한 학습 보강이 요구됩니다.";
+      } else {
+        grade = "C- 심화 정독 수련 요망";
+        gradeColorClass = "bg-rose-500/20 text-rose-400 border border-rose-500/30 shadow-lg";
+        desc = "이론 수집 및 정독 단계의 재수련이 적극 필요합니다. 다른 연습문제를 개설해 반복 트레이닝을 권장합니다.";
+      }
+
+      const gradeBadge = document.getElementById('grade-badge');
+      const gradeDesc = document.getElementById('grade-desc');
+      if (gradeBadge) {
+        gradeBadge.textContent = grade;
+        gradeBadge.className = `inline-block px-4 py-1.5 rounded-lg text-sm font-black tracking-wider ${gradeColorClass}`;
+      }
+      if (gradeDesc) gradeDesc.textContent = desc;
+
+      if (categoryAnalysisContainer) {
+        categoryAnalysisContainer.innerHTML = '';
+        Object.keys(categoryScores).forEach(cat => {
+          const stat = categoryScores[cat];
+          const pct = Math.round((stat.correct / stat.total) * 100);
+          
+          const card = document.createElement('div');
+          card.className = "bg-slate-900/40 p-4 rounded-xl border border-slate-800 space-y-3";
+          card.innerHTML = `
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-bold text-slate-300">${categoryMapping[cat] || cat}</span>
+              <span class="text-[10px] font-mono font-bold text-indigo-400">${stat.correct}/${stat.total} (${pct}%)</span>
+            </div>
+            <div class="bg-slate-950 rounded-full h-2 overflow-hidden w-full border border-slate-800">
+              <div class="h-full bg-indigo-500 rounded-full transition-all" style="width: ${pct}%"></div>
+            </div>
+          `;
+          categoryAnalysisContainer.appendChild(card);
+        });
+      }
+
+      if (reviewList) {
+        reviewList.innerHTML = '';
+        activeSheet.questions.forEach((q, idx) => {
+          const ansState = tempAnswers[idx];
+          const hasSelected = ansState && ansState.chosen !== null;
+          const isCorrect = hasSelected && (ansState.chosen === q.answer);
+
+          const rItem = document.createElement('div');
+          rItem.className = "py-4 first:pt-0 last:pb-0 space-y-2";
+          rItem.innerHTML = `
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex items-start space-x-2">
+                <span class="flex-shrink-0 mt-0.5 px-2 py-0.5 text-[10px] font-bold rounded ${isCorrect ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'} font-mono">Q.${q.id}</span>
+                <p class="text-sm font-bold ${isCorrect ? 'text-slate-300' : 'text-slate-200'}">${q.question}</p>
+              </div>
+              <span class="flex-shrink-0 text-[10px] font-black uppercase tracking-wider ${isCorrect ? 'text-emerald-400' : 'text-rose-400'}">
+                ${isCorrect ? '정답' : (hasSelected ? '오답' : '풀지 않음 (오답)')}
+              </span>
+            </div>
+            
+            <div class="pl-0 sm:pl-10 text-xs text-slate-400 space-y-1">
+              <div class="flex items-center space-x-2">
+                <span class="font-semibold text-slate-500">선택한 답안:</span>
+                <span class="${isCorrect ? 'text-emerald-400' : 'text-rose-400'}">
+                  ${hasSelected ? `${ansState.chosen + 1}번. ${q.options[ansState.chosen]}` : '<span class="text-slate-500">답안 제출 없음 (오답 처리)</span>'}
+                </span>
+              </div>
+              <div class="flex items-center space-x-2">
+                <span class="font-semibold text-slate-500">실제 정답:</span>
+                <span class="text-emerald-400">${q.answer + 1}번. ${q.options[q.answer]}</span>
+              </div>
+              <div class="bg-slate-900/60 p-3 rounded-lg border border-slate-800 mt-2 text-slate-400 font-normal leading-relaxed animate-fadeIn">
+                <strong class="text-slate-300 block mb-1">🔍 오답 가이드 코멘트:</strong>
+                ${q.explanation}
+              </div>
+            </div>
+          `;
+          reviewList.appendChild(rItem);
+        });
+      }
+    }
+
+    async function handleAIMentorClick() {
+      const q = activeSheet.questions[currentQuestionIndex];
+      const ansState = tempAnswers[currentQuestionIndex];
+      if (!ansState.isSubmitted) return;
+
+      if (aiQuizResponsePanel) aiQuizResponsePanel.classList.remove('hidden');
+      if (aiQuizResponseContent) {
+        aiQuizResponseContent.innerHTML = `
+          <div class="flex items-center space-x-2 text-slate-400 text-xs animate-pulse">
+            <span>AI 튜터가 수학적 유도 구조를 디코딩하고 있습니다...</span>
+          </div>
+        `;
+      }
+
+      const prompt = `
+        과목명: ${activeSheet.subject}
+        챕터명: ${activeSheet.chapter}
+        질문 내용: ${q.question}
+        제시 코드: ${q.boxText || "없음"}
+        학생 선택: ${ansState.chosen !== null ? `${ansState.chosen + 1}번 (${q.options[ansState.chosen]})` : "풀지 않음"}
+        정답 보기: ${q.answer + 1}번 (${q.options[q.answer]})
+        
+        핵심 이론과 오개념 탈출을 돕기 위한 상세한 보충 설명을 정중하고 전문적인 마크다운 형식으로 작성해 주세요.
+      `;
+
+      try {
+        const text = await callGemini(prompt, "당신은 친절하고 박식한 데이터 사이언스 연구 교수입니다.");
+        if (aiQuizResponseContent) aiQuizResponseContent.innerHTML = marked.parse(text);
+      } catch (error) {
+        if (aiQuizResponseContent) aiQuizResponseContent.innerHTML = `<span class="text-rose-400 font-bold">${error.message}</span>`;
+      }
+    }
+
+    async function handleAIPrescriptionClick() {
+      if (aiPrescriptionPanel) aiPrescriptionPanel.classList.remove('hidden');
+      if (aiPrescriptionContent) {
+        aiPrescriptionContent.innerHTML = `
+          <div class="flex items-center space-x-2 text-slate-400 text-xs animate-pulse p-4">
+            <span>종합 수련 오답 분석을 통한 취약 영역 극복 처방 문서를 산출 중입니다...</span>
+          </div>
+        `;
+      }
+
+      setTimeout(() => {
+        if (aiPrescriptionPanel) aiPrescriptionPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+
+      let wrongHistory = "";
+      activeSheet.questions.forEach((q, idx) => {
+        const ansState = tempAnswers[idx];
+        if (ansState.chosen !== q.answer) {
+          wrongHistory += `- [범주: ${q.category}] 질문: ${q.question} -> 선택오답: ${ansState.chosen !== null ? q.options[ansState.chosen] : '미작성'}, 정답: ${q.options[q.answer]}\n`;
+        }
+      });
+
+      const prompt = `
+        과목명: ${activeSheet.subject}
+        챕터명: ${activeSheet.chapter}
+        최종 평가 점수: ${activeSheet.score} 점
+        오답 지표:
+        ${wrongHistory || "모든 문항 완벽 합격!"}
+
+        부족한 영역에 대한 극복 전략, 공부법 처방전을 수려한 한글 마크다운 문서로 정성껏 제공해 주세요.
+      `;
+
+      try {
+        const text = await callGemini(prompt, "당신은 학습 케어 가이드 AI입니다.");
+        if (aiPrescriptionContent) aiPrescriptionContent.innerHTML = marked.parse(text);
+      } catch (error) {
+        if (aiPrescriptionContent) aiPrescriptionContent.innerHTML = `<span class="text-rose-400 font-bold">${error.message}</span>`;
+      }
+    }
+
+    async function handleChatbotSubmit(e) {
+      e.preventDefault();
+      if (!chatbotInput) return;
+      const userText = chatbotInput.value.trim();
+      if (!userText) return;
+
+      appendChatMessage("나", userText, "bg-indigo-600/20 text-slate-200 border border-indigo-500/20 self-end ml-auto");
+      chatbotInput.value = '';
+
+      const loadingId = "chatbot-loading-" + Date.now();
+      appendChatMessage("AI", `
+        <div class="flex items-center space-x-1 animate-pulse">
+          <span class="w-1 h-1 bg-slate-400 rounded-full animate-bounce"></span>
+          <span class="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
+          <span class="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 0.4s"></span>
+        </div>
+      `, "bg-slate-850 text-slate-400 self-start mr-auto", loadingId);
+
+      const prompt = `
+        현재 활성 테스트지: ${activeSheet ? activeSheet.title : "기본 과목"}
+        질문 내용: ${userText}
+      `;
+
+      try {
+        const reply = await callGemini(prompt, "당신은 데이터공학 전공 지도 교수입니다.");
+        removeChatMessage(loadingId);
+        appendChatMessage("AI", marked.parse(reply), "bg-slate-800 text-slate-300 self-start mr-auto prose text-xs");
+      } catch (error) {
+        removeChatMessage(loadingId);
+        appendChatMessage("AI", `<span class="text-rose-400 font-bold">${error.message}</span>`, "bg-slate-800 text-rose-400 self-start mr-auto");
+      }
+    }
+
+    function appendChatMessage(sender, text, styleClass, id = null) {
+      const bubble = document.createElement('div');
+      if (id) bubble.id = id;
+      bubble.className = `flex items-start space-x-2 ${sender === "나" ? "justify-end" : ""}`;
+      const avatar = sender === "AI" 
+        ? `<div class="w-7 h-7 bg-indigo-600 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white">AI</div>`
+        : "";
+
+      bubble.innerHTML = `
+        ${avatar}
+        <div class="${styleClass} rounded-xl p-3 text-xs max-w-[80%] leading-relaxed">
+          ${text}
+        </div>
+      `;
+      chatbotMessages.appendChild(bubble);
+      chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+    }
+
+    function removeChatMessage(id) {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    }
+
+    function setupEventListeners() {
+      const buildQuizBtn = document.getElementById('build-quiz-btn');
+      if (buildQuizBtn) {
+        buildQuizBtn.addEventListener('click', handleBuildQuiz);
+      }
+
+      const genFileInput = document.getElementById('gen-file-input');
+      if (genFileInput) {
+        genFileInput.addEventListener('change', handleGenFileInput);
+      }
+
+      const dropZone = document.getElementById('drop-zone-container');
+      if (dropZone) {
+        dropZone.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          dropZone.className = "border-2 border-dashed border-indigo-500 bg-indigo-500/5 rounded-lg p-4 transition-all relative flex flex-col items-center justify-center cursor-pointer min-h-[90px]";
+        });
+        dropZone.addEventListener('dragleave', (e) => {
+          e.preventDefault();
+          dropZone.className = "border-2 border-dashed border-slate-800 hover:border-indigo-500/50 bg-slate-900/40 rounded-lg p-4 transition-all relative flex flex-col items-center justify-center cursor-pointer min-h-[90px]";
+        });
+        dropZone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          dropZone.className = "border-2 border-dashed border-slate-800 hover:border-indigo-500/50 bg-slate-900/40 rounded-lg p-4 transition-all relative flex flex-col items-center justify-center cursor-pointer min-h-[90px]";
+          if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            handleFileSelect(e.dataTransfer.files[0]);
+          }
+        });
+      }
+
+      if (aiMentorBtn) {
+        aiMentorBtn.addEventListener('click', handleAIMentorClick);
+      }
+
+      if (aiPrescriptionBtn) {
+        aiPrescriptionBtn.addEventListener('click', handleAIPrescriptionClick);
+      }
+
+      if (chatbotToggleBtn && chatbotWindow) {
+        chatbotToggleBtn.addEventListener('click', () => chatbotWindow.classList.toggle('hidden'));
+      }
+      
+      if (chatbotCloseBtn && chatbotWindow) {
+        chatbotCloseBtn.addEventListener('click', () => chatbotWindow.classList.add('hidden'));
+      }
+
+      if (chatbotInputForm) {
+        chatbotInputForm.addEventListener('submit', handleChatbotSubmit);
+      }
+    }
+
+    async function initAuth() {
+      if (!isFirebaseInitialized) {
+        loadStorageFromLocal();
+        syncChaptersState();
+        renderProfileTab();
+        renderAuthPanel();
+        updateSyncStatus('local');
+        return;
+      }
+
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          if (!auth.currentUser) {
+            await signInAnonymously(auth);
+          }
+        }
+      } catch (err) {
+        console.error("인증 실패 (로컬 상태 전환):", err);
+        loadStorageFromLocal();
+        syncChaptersState();
+        renderProfileTab();
+        renderAuthPanel();
+        updateSyncStatus('local');
+      }
+    }
+
+    window.openConfirmModal = function(title, message, onSuccess, okText = "확인") {
+      const confirmEl = document.getElementById('custom-confirm');
+      const titleEl = document.getElementById('confirm-title');
+      const msgEl = document.getElementById('confirm-message');
+      const okBtn = document.getElementById('confirm-ok-btn');
+      
+      if (confirmEl && titleEl && msgEl && okBtn) {
+        titleEl.textContent = title;
+        msgEl.textContent = message;
+        okBtn.textContent = okText;
+        onConfirmSuccess = onSuccess;
+        confirmEl.classList.remove('hidden');
+        
+        okBtn.onclick = function() {
+          if (typeof onConfirmSuccess === 'function') {
+            onConfirmSuccess();
+          }
+          window.closeConfirmModal();
+        };
+      }
+    };
+
+    window.closeConfirmModal = function() {
+      const confirmEl = document.getElementById('custom-confirm');
+      if (confirmEl) confirmEl.classList.add('hidden');
+      onConfirmSuccess = null;
+    };
+
+    window.onload = function() {
+      initDOMElements();
+      setupEventListeners();
+      
+      loadStorageFromLocal();
+      window.changeDashboardTab("profile");
+
+      if (isFirebaseInitialized) {
+        updateSyncStatus('connecting');
+        initAuth();
+        
+        onAuthStateChanged(auth, async (user) => {
+          if (user) {
+            currentUser = user;
+            renderAuthPanel();
+            await loadDataFromFirestore(user.uid);
+          } else {
+            currentUser = null;
+            renderAuthPanel();
+            updateSyncStatus('local');
+          }
+        });
+      } else {
+        renderAuthPanel();
+        updateSyncStatus('local');
+      }
+    };
+  </script>
+</body>
+</html>
