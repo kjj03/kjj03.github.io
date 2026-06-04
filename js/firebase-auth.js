@@ -2,6 +2,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+// config 파일 경로를 주의하세요 (상위 폴더의 firebase-config.js)
 import { firebaseConfig } from '../firebase-config.js';
 
 export const app = initializeApp(firebaseConfig);
@@ -10,13 +12,8 @@ export const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
 export async function loginWithGoogle() {
-  try {
-    const result = await signInWithPopup(auth, provider);
-    return result.user;
-  } catch (error) {
-    console.error("Google Login Error:", error);
-    throw error;
-  }
+  const result = await signInWithPopup(auth, provider);
+  return result.user;
 }
 
 export async function logoutUser() {
@@ -31,8 +28,7 @@ export async function saveToCloud(uid, dataPayload, appId) {
 export async function loadFromCloud(uid, appId) {
   const userDocRef = doc(db, 'artifacts', appId, 'users', uid, 'progressData', 'main');
   const docSnap = await getDoc(userDocRef);
-  if (docSnap.exists()) return docSnap.data();
-  return null;
+  return docSnap.exists() ? docSnap.data() : null;
 }
 
 export { onAuthStateChanged };
