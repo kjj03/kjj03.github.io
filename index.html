@@ -3,52 +3,63 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI 학습 플랫폼 v26.06b</title>
+  <title>AI 기반 맞춤형 문제지 생성 플랫폼 v26.06b</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./css/style.css"> <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  
+  <link rel="stylesheet" href="./css/style.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body class="bg-[#090d16] text-slate-100 min-h-screen flex flex-col justify-between font-sans overflow-x-hidden">
 
-  <header>...</header> 
-  
+  <header class="border-b border-slate-900 bg-slate-900/90 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center gap-4">
+      <div class="flex items-center space-x-3 cursor-pointer min-w-0" onclick="changeDashboardTab('profile')">
+        <div class="p-2 bg-gradient-to-br from-indigo-500 via-purple-600 to-pink-500 rounded-xl text-white shadow-lg flex-shrink-0">
+          <span class="text-lg">🎓</span>
+        </div>
+        <div class="min-w-0">
+          <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+            <h1 class="text-sm sm:text-md md:text-lg font-black bg-gradient-to-r from-slate-100 to-purple-300 bg-clip-text text-transparent truncate break-words">
+              AI기반 학습 사이트
+              <span class="text-[9px] tracking-wide text-slate-950 font-black bg-indigo-400 px-1.5 py-0.5 rounded-md align-middle inline-block">v26.06b</span>
+            </h1>
+            <span id="sync-status" class="w-fit px-2 py-0.5 text-[9px] font-bold rounded-full bg-slate-955 text-slate-400 border border-slate-855 flex items-center space-x-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-slate-500 flex-shrink-0" id="sync-status-dot"></span>
+              <span id="sync-status-text">동기화 대기</span>
+            </span>
+          </div>
+        </div>
+      </div>
+      
+      <nav class="hidden md:flex space-x-1 bg-slate-955 p-1 rounded-xl border border-slate-900/60 flex-shrink-0">
+        <button id="tab-btn-profile" onclick="changeDashboardTab('profile')" class="px-2.5 py-1.5 rounded-lg text-xs font-black transition-all">👤 학습 프로필</button>
+        <button id="tab-btn-subjects" onclick="changeDashboardTab('subjects')" class="px-2.5 py-1.5 rounded-lg text-xs font-black transition-all">🗂️ 과목 관리</button>
+        <button id="tab-btn-generate" onclick="changeDashboardTab('generate')" class="px-2.5 py-1.5 rounded-lg text-xs font-black transition-all">✨ 문제지 생성</button>
+        <button id="tab-btn-storage" onclick="changeDashboardTab('storage')" class="px-2.5 py-1.5 rounded-lg text-xs font-black transition-all">📚 문제지 보관함</button>
+        <button id="tab-btn-settings" onclick="changeDashboardTab('settings')" class="px-2.5 py-1.5 rounded-lg text-xs font-black transition-all text-emerald-400 bg-emerald-500/5">⚙️ 시스템 정보</button>
+      </nav>
+    </div>
+  </header>
+
   <main class="max-w-6xl w-full mx-auto px-4 py-6 flex-grow relative mb-24 md:mb-6">
     <div id="home-view" class="space-y-6 sm:space-y-8">
       
       <div id="view-profile" class="space-y-6 hidden">
-        <div class="bg-gradient-to-br from-indigo-950/40 to-slate-900 border border-indigo-500/20 rounded-2xl p-5 shadow-2xl flex items-center justify-between">
-          <div class="flex items-center gap-5 w-full">
-            <div class="space-y-2 flex-grow">
-              <h2 class="text-xl font-black text-slate-100">
+        <div class="bg-gradient-to-br from-indigo-950/40 to-slate-900 border border-indigo-500/20 rounded-2xl p-5 sm:p-6 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6">
+          <div class="flex flex-col md:flex-row items-center gap-5 sm:gap-6 w-full md:w-auto">
+            <div class="text-center md:text-left space-y-2 flex-grow min-w-0">
+              <div class="flex flex-wrap gap-1.5 sm:gap-2 justify-center md:justify-start">
+                <span class="px-2.5 py-0.5 text-xs font-bold bg-indigo-500/20 text-indigo-300 rounded-full">Academic Portfolio</span>
+              </div>
+              <h2 class="text-xl sm:text-2xl font-black text-slate-100 flex flex-wrap items-center gap-2 justify-center md:justify-start">
                 <span id="profile-user-name">게스트 계정</span>
-                <span class="text-xs text-slate-500" id="profile-user-email">(오프라인 모드)</span>
+                <span class="text-xs font-normal text-slate-500" id="profile-user-email">(오프라인 모드)</span>
               </h2>
-              <button id="auth-action-btn" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-all mt-2">
+              <button id="auth-action-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs rounded-xl transition-all shadow-md mt-2">
                 🌐 구글 계정 연동 (클라우드 저장)
-              </button>
-            </div>
-          </div>
-        </div>
-        </div>
-
-      <div id="view-settings" class="hidden space-y-6">
-        <div class="max-w-3xl mx-auto space-y-6">
-          
-          <div class="bg-slate-900/40 border border-indigo-500/30 p-5 rounded-2xl space-y-4">
-            <h3 class="text-sm font-black text-indigo-400">🔑 AI 엔진(Gemini) API Key 설정</h3>
-            <p class="text-xs text-slate-400">사용자의 브라우저 로컬 저장소에 안전하게 암호화되어 보관됩니다. 한 번 입력 시 계속 유지됩니다.</p>
-            <div class="flex space-x-2">
-              <input type="password" id="api-key-input" class="flex-grow bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm focus:border-indigo-500" placeholder="AIzaSy... 로 시작하는 API 키 입력">
-              <button id="save-api-key-btn" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm">로컬 적용</button>
-            </div>
-          </div>
-          </div>
-      </div>
-    </div>
-  </main>
-
-  <script type="module" src="./js/app.js"></script>
-</body>
-</html>
