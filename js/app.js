@@ -1,12 +1,12 @@
 // js/app.js
+import { auth, loginWithGoogle, logoutUser, onAuthStateChanged, saveToCloud, loadFromCloud } from './firebase-auth.js';
+import { saveGeminiKey, getGeminiKey } from './gemini-engine.js';
 
-// 상태 변수 선언 (로컬 데이터 보존용)
-let studySubjects = {};
-let quizSheets = [];
-let chaptersState = {};
+const APP_ID = 'ai_study_v26_06b';
+let currentUser = null;
 
 // ==========================================
-// 1. 핵심 탭 전환 로직 (화면 스위칭)
+// 1. 화면 탭 전환 로직 (가장 중요)
 // ==========================================
 window.changeDashboardTab = function(id) {
   const views = ["profile", "subjects", "generate", "storage", "settings"];
@@ -15,77 +15,84 @@ window.changeDashboardTab = function(id) {
     const view = document.getElementById(`view-${t}`);
     const btn = document.getElementById(`tab-btn-${t}`);
     
-    // 선택되지 않은 탭 숨기기
     if (view) view.classList.add('hidden');
-    
-    // 버튼 스타일 초기화 (기본 회색)
-    if (btn) {
-      btn.className = "px-2.5 py-1.5 rounded-lg text-xs font-black transition-all text-slate-400 hover:text-white";
-    }
+    if (btn) btn.className = "px-2.5 py-1.5 rounded-lg text-xs font-black transition-all text-slate-400 hover:text-white";
   });
 
-  // 선택된 탭 보이기
   const activeView = document.getElementById(`view-${id}`);
   if (activeView) activeView.classList.remove('hidden');
 
-  // 선택된 탭 버튼에 불 들어오는 스타일 적용
   const activeBtn = document.getElementById(`tab-btn-${id}`);
   if (activeBtn) {
-    if (id === 'settings') {
-      activeBtn.className = "px-2.5 py-1.5 rounded-lg text-xs font-black transition-all text-emerald-400 bg-emerald-500/20";
-    } else {
-      activeBtn.className = "px-2.5 py-1.5 rounded-lg text-xs font-black transition-all text-indigo-400 bg-slate-900 shadow-inner";
-    }
+    activeBtn.className = id === 'settings' 
+      ? "px-2.5 py-1.5 rounded-lg text-xs font-black transition-all text-emerald-400 bg-emerald-500/20"
+      : "px-2.5 py-1.5 rounded-lg text-xs font-black transition-all text-indigo-400 bg-slate-900 shadow-inner";
   }
-
-  // 탭 전환 시 필요한 추가 렌더링 (데이터 불러오기)
-  if (id === "profile") renderProfileTab();
-  if (id === "subjects") renderSubjectManageTab();
-  if (id === "generate") renderGenerateTab();
-  if (id === "storage") renderStorageTab();
 };
 
 // ==========================================
-// 2. 화면별 빈 렌더링 함수 (에러 방지용 뼈대)
-// ==========================================
-// 기존에 작성하셨던 기능들이 들어갈 자리입니다.
-// 당장 에러가 나지 않도록 뼈대를 잡아두었습니다.
-
-function renderProfileTab() {
-  console.log("프로필 탭 렌더링 완료");
-}
-
-function renderSubjectManageTab() {
-  console.log("과목 관리 탭 렌더링 완료");
-}
-
-function renderGenerateTab() {
-  console.log("문제지 생성 탭 렌더링 완료");
-  // 선택창 초기화 등
-}
-
-function renderStorageTab() {
-  console.log("보관함 탭 렌더링 완료");
-}
-
-window.onGenSubjectSelectChange = function() {
-  console.log("과목이 선택되었습니다.");
-};
-
-window.updateGenerateTypeLock = function() {
-  console.log("유형 잠금 업데이트");
-};
-
-window.setGenType = function(type) {
-  console.log("문제지 유형 선택:", type);
-};
-
-// ==========================================
-// 3. 페이지가 처음 켜졌을 때 실행할 동작
+// 2. 초기 세팅 및 로그인 이벤트 연동
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
-  console.log("사이트 로딩 완료");
-  
-  // 처음에 무조건 '학습 프로필' 탭이 켜지도록 강제 설정
+  // 처음 사이트 접속 시 프로필 탭 강제 열기
   window.changeDashboardTab("profile");
+
+  // API 키 불러오기 세팅
+  const apiKeyInput = document.getElementById('api-key-input');
+  if (apiKeyInput) apiKeyInput.value = getGeminiKey();
+  
+  document.getElementById('save-api-key-btn')?.addEventListener('click', () => {
+    saveGeminiKey(document.getElementById('api-key-input').value);
+    alert('✅ AI API 키가 로컬에 안전하게 저장되었습니다.');
+  });
+
+  // 구글 로그인/로그아웃 버튼 클릭 이벤트
+  const authBtn = document.getElementById('auth-action-btn');
+  if (authBtn) {
+    authBtn.addEventListener('click', async () => {
+      if (currentUser) {
+        await logoutUser();
+      } else {
+        try {
+          await loginWithGoogle();
+        } catch(e) {
+          alert("로그인 중 에러 발생: " + e.message);
+        }
+      }
+    });
+  }
+});
+
+// ==========================================
+// 3. 구글 계정 로그인 상태 감지기
+// ==========================================
+onAuthStateChanged(auth, async (user) => {
+  const nameLabel = document.getElementById('profile-user-name');
+  const emailLabel = document.getElementById('profile-user-email');
+  const authBtn = document.getElementById('auth-action-btn');
+  const syncStatus = document.getElementById('sync-status-text');
+  
+  if (user) {
+    // 로그인 성공 상태
+    currentUser = user;
+    if (nameLabel) nameLabel.textContent = user.displayName;
+    if (emailLabel) emailLabel.textContent = user.email;
+    if (syncStatus) syncStatus.textContent = "클라우드 동기화 됨";
+    
+    if (authBtn) {
+      authBtn.textContent = "로그아웃";
+      authBtn.className = "px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-black text-xs rounded-xl transition-all shadow-md mt-2";
+    }
+  } else {
+    // 로그아웃 (또는 미로그인) 상태
+    currentUser = null;
+    if (nameLabel) nameLabel.textContent = "게스트 계정";
+    if (emailLabel) emailLabel.textContent = "(오프라인 모드)";
+    if (syncStatus) syncStatus.textContent = "동기화 대기";
+    
+    if (authBtn) {
+      authBtn.textContent = "🌐 구글 계정 연동 (클라우드 저장)";
+      authBtn.className = "px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs rounded-xl transition-all shadow-md mt-2";
+    }
+  }
 });
