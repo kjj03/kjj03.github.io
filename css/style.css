@@ -1,0 +1,32 @@
+/* css/style.css */
+html, body {
+  background-color: #090d16 !important;
+  color: #f1f5f9 !important;
+}
+body { font-family: 'Noto Sans KR', sans-serif; }
+code, pre { font-family: 'JetBrains Mono', monospace; }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #0f172a; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #6366f1; }
+
+@keyframes challengerGlow {
+  0%, 100% { border-color: rgba(251, 191, 36, 0.6); box-shadow: 0 0 15px rgba(251, 191, 36, 0.15); }
+  50% { border-color: rgba(244, 63, 94, 0.8); box-shadow: 0 0 25px rgba(244, 63, 94, 0.35); }
+}
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.challenger-premium-card {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(251, 191, 36, 0.1), rgba(244, 63, 94, 0.1), rgba(15, 23, 42, 0.95));
+  background-size: 300% 300%;
+  animation: challengerGlow 4s infinite ease-in-out, gradientShift 10s infinite ease-in-out;
+  border-width: 2px;
+}
+@keyframes goldenGlow {
+  0%, 100% { box-shadow: 0 0 4px rgba(250, 204, 21, 0.2); border-color: rgba(250, 204, 21, 0.3); }
+  50% { box-shadow: 0 0 15px rgba(250, 204, 21, 0.7); border-color: rgba(250, 204, 21, 0.9); }
+}
+.admin-correct-hint { animation: goldenGlow 1.5s infinite ease-in-out; }
