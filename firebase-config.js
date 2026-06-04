@@ -1,11 +1,10 @@
-// firebase-config.js
-// TODO: 집에 가셔서 Firebase 콘솔에서 발급받은 본인의 Config 값으로 덮어쓰세요.
-export const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID",
-  measurementId: "YOUR_MEASUREMENT_ID"
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyALT6mbEia6_gC49Q4A1BC7JNcq_dyuMuw",
+  authDomain: "jinstudy-9a005.firebaseapp.com",
+  projectId: "jinstudy-9a005",
+  storageBucket: "jinstudy-9a005.firebasestorage.app",
+  messagingSenderId: "728084744723",
+  appId: "1:728084744723:web:efbf911b7f5302a7d14de6",
+  measurementId: "G-5KYHDBML4Y"
 };
