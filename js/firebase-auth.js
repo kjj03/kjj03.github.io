@@ -5,12 +5,13 @@ import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/fireb
 
 // TODO: 발급 받으신 파이어베이스 수치를 이곳에 배치하십시오.
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyALT6mbEia6_gC49Q4A1BC7JNcq_dyuMuw",
+  authDomain: "jinstudy-9a005.firebaseapp.com",
+  projectId: "jinstudy-9a005",
+  storageBucket: "jinstudy-9a005.firebasestorage.app",
+  messagingSenderId: "728084744723",
+  appId: "1:728084744723:web:efbf911b7f5302a7d14de6",
+  measurementId: "G-5KYHDBML4Y"
 };
 
 export const app = initializeApp(firebaseConfig);
