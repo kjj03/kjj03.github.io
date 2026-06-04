@@ -1,10 +1,20 @@
 // js/firebase-auth.js
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-// config 파일 경로를 주의하세요 (상위 폴더의 firebase-config.js)
-import { firebaseConfig } from '../firebase-config.js';
+// ⚠️ 경로 에러를 원천 차단하기 위해 config 파일 불러오기를 없애고 여기에 직접 작성합니다.
+// 아래 값들을 본인의 Firebase 프로젝트 정보로 채워주세요!
+const firebaseConfig = {
+  apiKey: "AIzaSy...", 
+  authDomain: "...",
+  projectId: "...",
+  storageBucket: "...",
+  messagingSenderId: "...",
+  appId: "...",
+  measurementId: "..."
+};
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
