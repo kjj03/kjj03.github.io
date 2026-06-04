@@ -3,18 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>AI 기반 맞춤형 문제지 생성 플랫폼 v26.06b</title>
+  <title>AI 기반 맞춤형 문제지 생성 플랫폼 & 티어 시스템 v26.06b</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./css/style.css">
-
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
-<body class="bg-[#090d16] text-slate-100 min-h-screen flex flex-col justify-between font-sans overflow-x-hidden selective-none">
+<body class="bg-[#090d16] text-slate-100 min-h-screen flex flex-col justify-between font-sans overflow-x-hidden select-none">
 
   <header class="border-b border-slate-900 bg-slate-900/90 backdrop-blur sticky top-0 z-40">
     <div class="max-w-6xl mx-auto px-4 py-3.5 flex justify-between items-center gap-4">
@@ -28,7 +27,7 @@
               AI기반 학습 사이트
               <span class="text-[9px] tracking-wide text-slate-950 font-black bg-indigo-400 px-1.5 py-0.5 rounded-md align-middle inline-block">v26.06b</span>
             </h1>
-            <span id="sync-status" class="w-fit px-1.5 py-0.5 text-[8px] sm:text-[9px] font-bold rounded-full bg-slate-950 text-slate-400 border border-slate-800 flex items-center space-x-1">
+            <span id="sync-status" class="w-fit px-1.5 py-0.5 text-[8px] sm:text-[9px] font-bold rounded-full bg-slate-950 text-slate-400 border border-slate-8 border-slate-800 flex items-center space-x-1">
               <span class="w-1.5 h-1.5 rounded-full bg-slate-500 flex-shrink-0" id="sync-status-dot"></span>
               <span id="sync-status-text">동기화 대기</span>
             </span>
@@ -36,7 +35,7 @@
         </div>
       </div>
       
-      <nav class="hidden md:flex space-x-1 bg-slate-950 p-1 rounded-xl border border-slate-900 flex-shrink-0">
+      <nav class="hidden md:flex space-x-1 bg-slate-955 p-1 rounded-xl border border-slate-900 flex-shrink-0">
         <button id="tab-btn-profile" onclick="changeDashboardTab('profile')" class="px-3 py-1.5 rounded-lg text-xs font-black transition-all">👤 학습 프로필</button>
         <button id="tab-btn-subjects" onclick="changeDashboardTab('subjects')" class="px-3 py-1.5 rounded-lg text-xs font-black transition-all">🗂️ 과목 관리</button>
         <button id="tab-btn-generate" onclick="changeDashboardTab('generate')" class="px-3 py-1.5 rounded-lg text-xs font-black transition-all">✨ 문제지 생성</button>
@@ -44,8 +43,8 @@
         <button id="tab-btn-settings" onclick="changeDashboardTab('settings')" class="px-3 py-1.5 rounded-lg text-xs font-black transition-all text-emerald-400 bg-emerald-500/5">⚙️ 시스템 정보</button>
       </nav>
 
-      <button id="admin-cheat-indicator-btn" class="hidden px-2.5 py-1 text-[10px] rounded-lg font-black bg-amber-500/10 text-amber-400 border border-amber-500/30 animate-pulse">
-        🛠️ 치트 활성
+      <button id="admin-indicator-badge" class="hidden px-2.5 py-1 text-[10px] rounded-lg font-black bg-amber-500/10 text-amber-400 border border-amber-500/30 animate-pulse" onclick="changeDashboardTab('settings')">
+        🛠️ 치트 모드 활성
       </button>
     </div>
   </header>
@@ -56,56 +55,70 @@
       <div id="view-profile" class="space-y-6 hidden animate-fadeIn">
         <div class="bg-gradient-to-br from-indigo-950/40 to-slate-900 border border-indigo-500/20 rounded-2xl p-4 sm:p-6 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4">
           <div class="flex items-center gap-4 w-full md:w-auto">
-            <div class="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-slate-950 flex items-center justify-center border border-indigo-500/30 text-2xl sm:text-3xl shadow-inner" id="profile-tier-emoji">🥉</div>
-            <div class="space-y-1 min-w-0 flex-grow md:flex-grow-0 text-left">
-              <div class="flex items-center space-x-2">
-                <span class="px-2 py-0.5 text-[10px] font-bold bg-indigo-500/20 text-indigo-300 rounded-full" id="profile-tier-badge">브론즈 티어</span>
-                <span class="text-xs text-amber-400 font-extrabold" id="profile-cash-label">💰 0원</span>
+            <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-slate-950 flex items-center justify-center border border-indigo-500/20 text-xl sm:text-2xl shadow-inner" id="profile-level-badge">LV.1</div>
+            <div class="space-y-1 min-w-0 flex-grow text-left">
+              <div class="flex items-center flex-wrap gap-1.5">
+                <span class="px-2 py-0.5 text-[9px] font-bold bg-indigo-500/20 text-indigo-300 rounded-full" id="profile-exp-label">0 / 50 EXP</span>
+                <span class="px-2 py-0.5 text-[9px] font-bold bg-amber-500/10 text-amber-400 rounded-full" id="profile-cash-label">💰 용돈: 0원</span>
+                <button onclick="checkAttendance()" id="attendance-btn" class="px-2 py-0.5 text-[9px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-full transition-all">📅 일일 출석체크</button>
               </div>
-              <h2 class="text-lg sm:text-xl font-black text-slate-100 flex items-center gap-1.5">
+              <h2 class="text-base sm:text-lg font-black text-slate-100 flex items-center gap-1.5">
                 <span id="profile-user-name">게스트 계정</span>
-                <span class="text-[10px] text-slate-500 truncate max-w-[120px] sm:max-w-none" id="profile-user-email">(오프라인 모드)</span>
+                <span class="text-[10px] text-slate-500 truncate max-w-[150px] sm:max-w-none" id="profile-user-email">(로컬 저장소 활성화됨)</span>
               </h2>
-              <button id="auth-action-btn" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white font-black text-[11px] rounded-lg transition-all shadow-md mt-1">
-                🌐 구글 계정 연동 (클라우드 저장)
-              </button>
+              <div class="flex space-x-1.5 mt-1">
+                <button id="auth-action-btn" class="px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white font-black text-[10px] rounded-md transition-all shadow-md"></button>
+                <button onclick="toggleAdminMode()" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-400 font-bold text-[10px] rounded-md transition-all">🛠️</button>
+              </div>
             </div>
           </div>
           
-          <div class="w-full md:w-64 bg-slate-950/80 p-3 rounded-xl border border-slate-850 space-y-1.5">
-            <div class="flex justify-between text-xs font-bold"><span class="text-slate-400">종합 학습 경험치</span><span class="text-indigo-400" id="profile-exp-text">0 / 100 EXP</span></div>
-            <div class="w-full bg-slate-900 rounded-full h-2.5 overflow-hidden border border-slate-800"><div id="profile-exp-bar" class="bg-gradient-to-r from-indigo-500 to-purple-500 h-full transition-all duration-500" style="width: 0%"></div></div>
+          <div class="w-full md:w-60 bg-slate-950/80 p-3 rounded-xl border border-slate-850 space-y-1.5 text-left">
+            <span class="text-[10px] font-black text-slate-400 block">💸 현실 지출 용돈 차감 연동</span>
+            <div class="flex space-x-1">
+              <input type="text" id="spend-desc-input" placeholder="커피 구매" class="w-1/2 bg-slate-900 border border-slate-800 rounded px-2 py-1 text-[10px] text-slate-200 focus:outline-none">
+              <input type="number" id="spend-amount-input" placeholder="4500" class="w-1/2 bg-slate-900 border border-slate-800 rounded px-2 py-1 text-[10px] text-slate-200 focus:outline-none">
+            </div>
+            <button onclick="spendPocketMoney()" class="w-full py-1 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white text-[10px] font-black rounded transition-all">소비 차감 집계</button>
           </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div class="lg:col-span-7 space-y-4">
-            <h3 class="text-sm font-black text-slate-400 flex items-center space-x-2"><span>🏆 전공 과목별 상세 랭크</span></h3>
-            <div class="space-y-3" id="subject-accordion-container"></div>
+            <h3 class="text-xs font-black text-slate-400 flex items-center space-x-2">
+              <span class="w-1 h-3.5 bg-indigo-500 rounded"></span>
+              <span>📘 전공 과목별 정밀 학업 티어 현황</span>
+            </h3>
+            <div class="space-y-2.5" id="subject-accordion-container"></div>
 
-            <h3 class="text-sm font-black text-slate-400 pt-2">🎖️ 달성한 업적</h3>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="achievements-list-container"></div>
+            <h3 class="text-xs font-black text-slate-400 pt-2">🎖️ 누적 보상형 학업 업적 (Achievements)</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5" id="achievements-list-container"></div>
+            
+            <div class="bg-slate-900/30 p-3 rounded-xl border border-slate-850 text-left">
+              <span class="text-[10px] font-bold text-slate-500 block mb-1">🧾 영수증 소비 타임라인 기록</span>
+              <div class="space-y-1 max-h-[85px] overflow-y-auto pr-1 text-[10px]" id="pocket-money-history"></div>
+            </div>
           </div>
 
           <div class="lg:col-span-5 space-y-4">
-            <div class="bg-slate-900/60 border border-slate-850 rounded-2xl p-4 space-y-3">
-              <div class="flex justify-between items-center"><span class="text-xs font-black text-slate-300" id="calendar-month-title">2026년 06월</span><span class="text-[10px] text-indigo-400 font-bold">학습 캘린더</span></div>
-              <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-500 border-b border-slate-850 pb-1"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
+            <div class="bg-slate-900/60 border border-slate-855 rounded-2xl p-4 space-y-3">
+              <div class="flex justify-between items-center"><span class="text-xs font-black text-slate-200" id="calendar-month-title">2026년 06월</span><span class="text-[9px] text-indigo-400 font-bold">지식 연동 캘린더</span></div>
+              <div class="grid grid-cols-7 gap-1 text-center text-[9px] font-bold text-slate-500 border-b border-slate-850 pb-1"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
               <div class="grid grid-cols-7 gap-1 text-center text-xs" id="calendar-days-grid"></div>
             </div>
 
-            <div class="bg-slate-900/40 border border-slate-850 rounded-2xl p-4 space-y-3">
-              <span class="text-xs font-black text-slate-400 block">📅 전공 시험 및 학습 일정</span>
-              <div class="flex gap-2">
-                <input type="text" id="schedule-input" placeholder="일정 입력 (예: 6/15 인공지능 기말)" class="flex-grow bg-slate-950 border border-slate-800 text-xs rounded-xl px-3 py-2 text-slate-200">
-                <button onclick="addScheduleItem()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl flex-shrink-0">등록</button>
+            <div class="bg-slate-900/40 border border-slate-855 rounded-2xl p-3.5 space-y-2.5">
+              <span class="text-xs font-black text-slate-400 block text-left">📅 중간/기말 전공 마감 일정</span>
+              <div class="flex gap-1.5">
+                <input type="text" id="schedule-text-input" placeholder="예: 6/15 기계학습 기말" class="flex-grow bg-slate-950 border border-slate-800 text-xs rounded-xl px-3 py-2 text-slate-200 focus:outline-none">
+                <button onclick="addScheduleItem()" class="px-3 py-2 bg-slate-800 hover:bg-indigo-600 text-white text-xs font-black rounded-xl flex-shrink-0 transition-all">등록</button>
               </div>
-              <div class="space-y-2 max-h-[120px] overflow-y-auto" id="schedule-list-container"></div>
+              <div class="space-y-1.5 max-h-[110px] overflow-y-auto pr-1" id="schedule-list-container"></div>
             </div>
 
-            <div class="bg-slate-900/40 border border-slate-850 rounded-2xl p-4 space-y-2">
-              <span class="text-xs font-black text-slate-400 block">📝 전공 핵심 통합 메모장</span>
-              <textarea id="global-memo-textarea" class="w-full h-32 bg-slate-950 border border-slate-850 text-xs rounded-xl p-3 text-slate-300 focus:outline-none focus:border-indigo-500 resize-none" placeholder="복습이 필요한 수식, 개념 오답 노트 등을 자유롭게 기록하세요... (자동 로컬/클라우드 저장)"></textarea>
+            <div class="bg-slate-900/40 border border-slate-855 rounded-2xl p-3.5 space-y-2">
+              <span class="text-xs font-black text-slate-400 block text-left">📝 수식 및 이론 오답노트 통합 메모</span>
+              <textarea id="global-memo-textarea" class="w-full h-24 bg-slate-950 border border-slate-850 text-xs rounded-xl p-2.5 text-slate-300 focus:outline-none focus:border-indigo-500 resize-none" placeholder="암기가 필요한 증명 수식이나 특징들을 기입하세요..."></textarea>
             </div>
           </div>
         </div>
@@ -114,42 +127,42 @@
       <div id="view-subjects" class="space-y-6 hidden animate-fadeIn">
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           <div class="lg:col-span-4 bg-slate-900/50 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4">
-            <h3 class="text-sm font-black text-slate-200">📂 신규 전공 과목 개설</h3>
+            <h3 class="text-xs sm:text-sm font-black text-slate-200 text-left">📂 대학교 전공 과목 개설</h3>
             <div class="space-y-2">
-              <input type="text" id="subj-name-input" placeholder="예: 기계학습이론" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-slate-200 focus:border-indigo-500" />
-              <button id="create-subj-btn" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs sm:text-sm rounded-xl shadow-md transition-all">+ 전공 과목 개설</button>
+              <input type="text" id="subj-name-input" placeholder="예: 컴퓨터 네트워크" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500" />
+              <button onclick="createNewSubject()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl shadow-md transition-all">+ 신규 전공 과목 개설</button>
             </div>
-            <div class="border-t border-slate-850 pt-3 space-y-2">
-              <span class="text-[11px] font-bold text-slate-500 block">개설 완료 과목 목록</span>
-              <div class="grid grid-cols-1 gap-2 max-h-[250px] overflow-y-auto" id="subject-manage-list"></div>
+            <div class="border-t border-slate-850 pt-3 space-y-2 text-left">
+              <span class="text-[10px] font-bold text-slate-500 block">현재 개설 완료 과목 목록</span>
+              <div class="grid grid-cols-1 gap-2 max-h-[220px] overflow-y-auto" id="subject-manage-list"></div>
             </div>
           </div>
 
           <div class="lg:col-span-8 space-y-6">
-            <div id="subject-detail-fallback" class="bg-slate-900/40 border-2 border-dashed border-slate-850 p-12 text-center text-slate-500 text-xs sm:text-sm font-bold rounded-2xl">
-              개설 과목을 먼저 생성하거나 선택해 주세요.
+            <div id="subject-detail-fallback" class="bg-slate-900/40 border-2 border-dashed border-slate-850 p-12 text-center text-slate-500 text-xs font-bold rounded-2xl">
+              좌측 목록에서 관리할 개설 과목을 선택해 주세요.
             </div>
             <div id="subject-detail-panel" class="hidden space-y-4">
               <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex justify-between items-center">
-                <h3 class="text-sm sm:text-base font-black text-white" id="detail-subject-title">과목 관리 정보</h3>
-                <button id="delete-subject-btn" class="px-3 py-1.5 bg-rose-600/15 text-rose-400 text-xs rounded-xl font-bold">과목 삭제</button>
+                <h3 class="text-xs sm:text-sm font-black text-white" id="detail-subject-title">과목 관리 정보</h3>
+                <button onclick="deleteCurrentSubject()" class="px-3 py-1.5 bg-rose-600/15 text-rose-400 text-xs rounded-xl font-bold transition-all">과목 완전 폐강</button>
               </div>
 
-              <div class="bg-slate-900/50 border border-slate-800 p-4 rounded-2xl space-y-4">
+              <div class="bg-slate-900/50 border border-slate-800 p-4 rounded-2xl space-y-4 text-left">
                 <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
                   <div class="md:col-span-5 space-y-3 bg-slate-950 p-3.5 rounded-xl border border-slate-850">
-                    <span class="text-xs font-bold text-slate-300 block">1️⃣ 단원 정보 등록</span>
-                    <input type="text" id="chap-name-input" placeholder="예: 01. 로지스틱 회귀분석" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200" />
+                    <span class="text-xs font-bold text-slate-300 block">1️⃣ 신규 단원명 입력</span>
+                    <input type="text" id="chap-name-input" placeholder="예: Chapter 02. 애플리케이션 계층" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none" />
                     
-                    <span class="text-xs font-bold text-slate-300 block pt-1">2️⃣ 교수 교안 원문 업로드</span>
-                    <div class="border-2 border-dashed border-slate-800 hover:border-indigo-500/50 bg-slate-900/40 rounded-lg p-4 relative flex flex-col items-center justify-center cursor-pointer min-h-[90px]" id="drop-zone-container">
-                      <input type="file" id="gen-file-input" accept=".html,.txt,.pdf" class="absolute inset-0 opacity-0 cursor-pointer" />
-                      <span class="text-[11px] text-slate-400 text-center font-bold leading-relaxed" id="gen-file-status">드래그 또는 클릭 업로드<br><span class="text-indigo-400 text-[10px]">(PDF / TXT 파일 대응)</span></span>
+                    <span class="text-xs font-bold text-slate-300 block pt-1">2️⃣ 교수 교안 텍스트/PDF 연동</span>
+                    <div class="border-2 border-dashed border-slate-800 hover:border-indigo-500/50 bg-slate-900/40 rounded-lg p-4 relative flex flex-col items-center justify-center cursor-pointer min-h-[95px]" id="drop-zone-container">
+                      <input type="file" id="gen-file-input" accept=".html,.txt,.pdf,.pptx,.hwp,.hwpx" class="absolute inset-0 opacity-0 cursor-pointer" />
+                      <span class="text-[10px] sm:text-[11px] text-slate-400 text-center font-bold leading-relaxed" id="gen-file-status">드래그 또는 클릭 업로드<br><span class="text-indigo-400 text-[9px]">(PDF, PPTX, HWP, TXT 파싱 대응)</span></span>
                     </div>
-                    <button id="create-chap-btn" class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-lg shadow transition-all">교안 정밀분석 및 단원 등록</button>
+                    <button onclick="createNewChapter()" class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-lg shadow transition-all">원문 정밀분석 및 단원 등록</button>
                   </div>
                   <div class="md:col-span-7 space-y-2">
-                    <span class="text-[11px] font-bold text-slate-500 block">등록된 챕터(단원) 목록 데이터</span>
+                    <span class="text-[10px] font-bold text-slate-500 block">등록된 챕터(단원) 기출 진도 맵</span>
                     <div class="space-y-2 max-h-[260px] overflow-y-auto" id="chapter-manage-list"></div>
                   </div>
                 </div>
@@ -161,52 +174,52 @@
 
       <div id="view-generate" class="hidden space-y-6 animate-fadeIn">
         <div class="max-w-2xl mx-auto bg-slate-900/50 border border-slate-800 p-4 sm:p-6 rounded-3xl space-y-5">
-          <div class="border-b border-slate-850 pb-3">
-            <h3 class="text-base sm:text-lg font-extrabold text-white flex items-center space-x-2">
-              <span class="w-1.5 h-4.5 bg-indigo-500 rounded-full"></span>
-              <span>✨ AI 인터랙티브 정석 문제지 출제</span>
+          <div class="border-b border-slate-850 pb-3 text-left">
+            <h3 class="text-sm sm:text-base font-extrabold text-white flex items-center space-x-2">
+              <span class="w-1.5 h-4 bg-indigo-500 rounded-full"></span>
+              <span>✨ AI 인터랙티브 대학 중간/기말 기출 스타일 출제</span>
             </h3>
-            <p class="text-xs text-slate-400 mt-1">교안 원문의 모든 하위 주제 데이터를 누락 없이 추출하여 균등분포 비율로 출제합니다.</p>
+            <p class="text-[11px] text-slate-400 mt-1">인위적인 실무 각색 및 시나리오를 제거하고, 전 영역을 균등분포 스캔하여 정석 기출 문항을 생성합니다.</p>
           </div>
-          <div class="space-y-4">
+          <div class="space-y-3.5 text-left">
             <div class="space-y-1">
-              <label class="text-xs font-bold text-slate-400">대상 전공 과목</label>
-              <select id="gen-subject-select" class="w-full bg-slate-800 text-slate-100 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm focus:outline-none"></select>
+              <label class="text-xs font-bold text-slate-400">전공 과목 선택</label>
+              <select id="gen-subject-select" onchange="onGenSubjectSelectChange()" class="w-full bg-slate-800 text-slate-100 border border-slate-700 rounded-xl px-3 py-2 text-xs focus:outline-none"></select>
             </div>
             <div class="space-y-1">
-              <label class="text-xs font-bold text-slate-400">범위 선택</label>
-              <select id="gen-chapter-select" class="w-full bg-slate-800 text-slate-100 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm focus:outline-none"></select>
+              <label class="text-xs font-bold text-slate-400">범위 단원 선택</label>
+              <select id="gen-chapter-select" onchange="updateGenerateTypeLock()" class="w-full bg-slate-800 text-slate-100 border border-slate-700 rounded-xl px-3 py-2 text-xs focus:outline-none"></select>
             </div>
-            <div class="space-y-2">
-              <label class="text-xs font-bold text-slate-400 block">문제지 생성 유형</label>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="gen-type-buttons-group">
-                <button id="type-btn-practice" class="p-3 sm:p-4 rounded-xl border-2 text-left w-full transition-all border-indigo-500 bg-indigo-500/5">
-                  <span class="text-xs sm:text-sm font-bold text-indigo-400 block">📚 개념 평가 모드 (10문항)</span>
-                  <span class="text-[10px] text-slate-500 block mt-0.5">단원 내 핵심 학술 개념 진단</span>
+            <div class="space-y-1.5">
+              <label class="text-xs font-bold text-slate-400 block">출제 퀴즈 형태 유형</label>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5" id="gen-type-buttons-group">
+                <button id="type-btn-practice" onclick="setGenType('practice')" class="p-3 rounded-xl border-2 text-left w-full transition-all border-indigo-500 bg-indigo-500/5">
+                  <span class="text-xs sm:text-sm font-bold text-indigo-400 block">📚 단원 개념 평가 (10문항)</span>
+                  <span class="text-[9px] text-slate-500 block mt-0.5">승급 조건에 필요한 누적 지식 점수 적재 코스</span>
                 </button>
-                <button id="type-btn-real" class="p-3 sm:p-4 rounded-xl border border-slate-800 text-left w-full transition-all opacity-60">
-                  <span class="text-xs sm:text-sm font-bold text-slate-400 block">🔥 실전 고난도 평가 (20문항)</span>
-                  <span class="text-[10px] text-slate-500 block mt-0.5">수식 및 정밀 비교 기출 스타일</span>
+                <button id="type-btn-real" onclick="setGenType('real')" class="p-3 rounded-xl border border-slate-800 text-left w-full transition-all text-slate-500 cursor-not-allowed" disabled>
+                  <span class="text-xs sm:text-sm font-bold block" id="real-mode-title-text">🔒 단원 실전 승급전 (20문항)</span>
+                  <span class="text-[9px] block mt-0.5" id="real-mode-desc-text">연습 모드를 통해 10 XP 이상 누적 시 잠금 해제</span>
                 </button>
               </div>
             </div>
           </div>
-          <button id="build-quiz-btn" class="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-lg transition-all">
-            ✨ AI 문제지 즉시 출제하기
+          <button id="build-quiz-btn" onclick="handleBuildQuiz()" class="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-lg transition-all">
+            ✨ AI 정석 문제지 즉시 출제하기
           </button>
           
-          <div id="gen-loading-spinner" class="hidden bg-slate-950 p-6 rounded-2xl border border-slate-800 flex flex-col items-center justify-center text-center space-y-3">
-            <div class="w-8 h-8 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin"></div>
-            <p class="text-xs font-bold text-indigo-400 animate-pulse">교안 데이터를 선형 스캔하여 중요 지식 영역 균등 커버리지 연산 중...</p>
+          <div id="gen-loading-spinner" class="hidden bg-slate-955 p-6 rounded-2xl border border-slate-800 flex flex-col items-center justify-center text-center space-y-2.5">
+            <div class="w-7 h-7 rounded-full border-3 border-indigo-500 border-t-transparent animate-spin"></div>
+            <p class="text-xs font-bold text-indigo-400 animate-pulse">교안 텍스트 스트림 선형 매핑 및 중요 하위 개념 균등분포 출제 계산 중...</p>
           </div>
         </div>
       </div>
 
-      <div id="view-storage" class="hidden space-y-6 animate-fadeIn">
+      <div id="view-storage" class="hidden space-y-6 function-handler animate-fadeIn">
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div class="lg:col-span-3 bg-slate-900/40 border border-slate-800 rounded-2xl p-4 space-y-3">
-            <h4 class="text-xs font-black text-indigo-400">개설 과목 필터링</h4>
-            <div class="space-y-1.5" id="storage-subject-list"></div>
+          <div class="lg:col-span-3 bg-slate-900/40 border border-slate-800 rounded-2xl p-3.5 space-y-2.5 text-left">
+            <h4 class="text-xs font-black text-indigo-400">과목 소팅 필터</h4>
+            <div class="space-y-1" id="storage-subject-list"></div>
           </div>
           <div class="lg:col-span-9 space-y-4">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="storage-sheets-grid"></div>
@@ -215,32 +228,45 @@
       </div>
 
       <div id="view-settings" class="hidden space-y-6 animate-fadeIn">
-        <div class="max-w-3xl mx-auto space-y-6">
-          <div class="bg-slate-900/40 border border-indigo-500/30 p-4 sm:p-6 rounded-2xl space-y-4 shadow-xl">
+        <div class="max-w-3xl mx-auto space-y-6 text-left">
+          <div class="bg-slate-900/40 border border-indigo-500/20 p-4 sm:p-5 rounded-2xl space-y-3.5 shadow-xl">
             <div class="flex items-center space-x-2 text-indigo-400">
-              <span class="text-sm sm:text-base">🔑</span>
-              <h3 class="text-xs sm:text-sm font-black">구글 오피셜 Gemini API Key 하드웨어 등록</h3>
+              <span class="text-xs sm:text-sm">🔑</span>
+              <h3 class="text-xs sm:text-sm font-black">구글 API 인프라 자급식 Gemini Key 등록</h3>
             </div>
-            <p class="text-[11px] text-slate-400 font-bold leading-relaxed">
-              입력 시 사용자의 브라우저 로컬 저장소 캐시에만 안전하게 암호화 보관되며, 사이트를 재실행할 때마다 자동으로 자급식 AI 통신 인프라를 가동시킵니다.
-            </p>
-            <div class="flex flex-col sm:flex-row gap-2 pt-1">
-              <input type="password" id="api-key-input" class="flex-grow bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-xs font-mono text-indigo-300 focus:outline-none" placeholder="AIzaSy... 로 시작하는 API 키 입력" />
-              <button id="save-api-key-btn" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-550 text-white font-black text-xs rounded-xl transition-all flex-shrink-0">로컬 키 바인딩</button>
+            <div class="flex flex-col sm:flex-row gap-2">
+              <input type="password" id="api-key-input" class="flex-grow bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-xs font-mono text-indigo-300 focus:outline-none" placeholder="AIzaSy... 로 시작하는 개인 API 키 세팅" />
+              <button onclick="updateCustomGeminiKey()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-550 text-white font-black text-xs rounded-xl transition-all">로컬 영구 할당</button>
             </div>
           </div>
 
-          <div class="bg-slate-900/40 border border-slate-800 p-4 sm:p-6 rounded-2xl space-y-4">
-            <h3 class="text-xs font-black text-slate-400">🛠️ 디버깅 치트 시스템 설정 및 데이터 수동 관리</h3>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <button onclick="toggleAdminCheatMode()" class="p-3 bg-slate-950 border border-slate-850 rounded-xl text-left text-xs hover:border-amber-500 transition-all">
-                <span class="font-bold text-amber-400 block">🔒 [관리자 모드] 평가 정답 치트 힌트 전환</span>
-                <span class="text-[10px] text-slate-500 block mt-0.5" id="cheat-toggle-status">현재 상태: 비활성화</span>
-              </button>
-              <button onclick="clearAllDataStorage()" class="p-3 bg-rose-950/20 border border-rose-900/30 rounded-xl text-left text-xs hover:bg-rose-900/20 transition-all">
-                <span class="font-bold text-rose-400 block">💥 전체 학습 데이터베이스 초기화</span>
-                <span class="text-[10px] text-slate-500 block mt-0.5">로컬 저장소 캐시 및 진행 내역 완전 영구 소멸</span>
-              </button>
+          <div class="bg-slate-900/40 border border-slate-800 p-4 sm:p-5 rounded-2xl space-y-3">
+            <h3 class="text-xs font-black text-slate-300">🌐 파이어베이스 클라우드 다중 기기 세션 동기화</h3>
+            <div class="flex flex-col sm:flex-row gap-2">
+              <input type="text" id="sync-key-input" class="flex-grow bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-xs text-slate-300 focus:outline-none" placeholder="기기 간 데이터를 일치시킬 커스텀 고유 식별 주소 입력" />
+              <button onclick="updateCustomSyncKey()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-black text-xs rounded-xl transition-all">식별 세션 동기화</button>
+            </div>
+            <div class="grid grid-cols-2 gap-2 pt-1">
+              <button onclick="manualSaveToCloud()" class="py-2 border border-slate-800 bg-slate-950/40 text-[11px] font-bold rounded-xl text-slate-400 hover:text-white transition-all">☁️ 현재 진도 클라우드 강제 백업</button>
+              <button onclick="manualLoadFromCloud()" class="py-2 border border-slate-800 bg-slate-950/40 text-[11px] font-bold rounded-xl text-slate-400 hover:text-white transition-all">📥 클라우드 진도 원격 덮어쓰기</button>
+            </div>
+          </div>
+
+          <div class="bg-slate-900/40 border border-slate-800 p-4 sm:p-5 rounded-2xl space-y-2">
+            <h3 class="text-xs font-black text-slate-300">📋 플랫폼 간 학습 데이터 텍스트 수동 이관 (오프라인 대응)</h3>
+            <div class="flex gap-2">
+              <button onclick="exportProgressText()" class="w-1/2 py-2 bg-slate-950 text-slate-300 border border-slate-850 rounded-xl text-xs font-bold transition-all">📋 현재 데이터 백업 코드 복사</button>
+              <button onclick="importProgressText()" class="w-1/2 py-2 bg-slate-950 text-indigo-400 border border-slate-850 rounded-xl text-xs font-bold transition-all">💾 백업 코드로 진도 즉시 복원</button>
+            </div>
+          </div>
+
+          <div class="bg-slate-900/40 border border-slate-800 p-4 sm:p-5 rounded-2xl space-y-2.5">
+            <h3 class="text-xs font-black text-amber-500 flex items-center space-x-1.5"><span>🛠️ 출제 무결성 알고리즘 검증 전용 [치트 패널]</span></h3>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button onclick="adminInstantPromote()" class="p-2 bg-slate-950 border border-amber-500/20 text-slate-400 text-[10px] rounded-lg font-bold hover:border-amber-500 transition-all">⚡ 선택과목 강제 10XP 주입</button>
+              <button onclick="adminForceChallenger()" class="p-2 bg-slate-950 border border-amber-500/20 text-slate-400 text-[10px] rounded-lg font-bold hover:border-amber-500 transition-all">🏆 전단원 강제 마스터 리그</button>
+              <button onclick="adminSubmitAllCorrect()" class="p-2 bg-slate-950 border border-amber-500/20 text-slate-400 text-[10px] rounded-lg font-bold hover:border-amber-500 transition-all">💯 현재 퀴즈 만점 일괄 제출</button>
+              <button onclick="clearAllDataStorage()" class="p-2 bg-rose-950/30 border border-rose-900/20 text-rose-400 text-[10px] rounded-lg font-bold hover:bg-rose-900/40 transition-all">💥 전체 데이터 완전 공장 초기화</button>
             </div>
           </div>
         </div>
@@ -249,51 +275,59 @@
     </div>
 
     <div id="quiz-view" class="hidden space-y-4 animate-fadeIn">
-      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl space-y-5">
-        <div class="flex justify-between items-center pb-2.5 border-b border-slate-800">
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl space-y-4 text-left">
+        <div class="flex justify-between items-center pb-2 border-b border-slate-800">
           <span class="text-xs font-black text-indigo-400" id="question-index-label">Q. 01</span>
-          <span id="quiz-title-label" class="text-xs text-slate-400 font-bold max-w-[180px] sm:max-w-none truncate"></span>
+          <span id="quiz-title-label" class="text-xs text-slate-400 font-bold max-w-[150px] sm:max-w-none truncate"></span>
         </div>
-        <div class="space-y-2">
-          <h3 id="question-text" class="text-sm sm:text-base font-bold text-white leading-relaxed whitespace-pre-wrap"></h3>
+        <div>
+          <h3 id="question-text" class="text-xs sm:text-sm font-bold text-white leading-relaxed whitespace-pre-wrap font-sans"></h3>
         </div>
-        <div class="space-y-2.5" id="options-container"></div>
+        <div class="space-y-2" id="options-container"></div>
         
-        <div id="feedback-box" class="hidden rounded-xl p-3.5 border text-xs mt-2 animate-fadeIn">
+        <div id="feedback-box" class="hidden rounded-xl p-3 border text-xs mt-1 animate-fadeIn">
           <h4 id="feedback-title" class="font-black"></h4>
-          <p id="explanation-text" class="mt-1.5 text-slate-300 leading-relaxed font-sans"></p>
+          <p id="explanation-text" class="mt-1 text-slate-300 leading-relaxed font-sans"></p>
+          <div id="ai-tutor-zone" class="mt-3 pt-2.5 border-t border-slate-800/60 hidden">
+            <button id="ai-tutor-btn" class="px-2.5 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold text-[10px] rounded" onclick="callAITutorDeepAnalysis()">✨ AI 튜터 소환 교정 (정밀 심화 분석)</button>
+            <div id="ai-tutor-response" class="text-[11px] text-purple-300 mt-2 bg-purple-950/20 p-2 rounded border border-purple-900/30 hidden whitespace-pre-wrap"></div>
+          </div>
         </div>
         
         <div class="flex justify-between items-center pt-3 border-t border-slate-800/60 gap-2">
-          <button id="btn-prev" class="px-3 py-2 bg-slate-800 text-slate-300 text-xs font-bold rounded-lg">이전</button>
-          <button id="action-btn" class="px-4 py-2 bg-slate-700 text-slate-400 text-xs font-bold rounded-xl flex-grow text-center">답안 선택</button>
-          <button id="btn-next" class="px-3 py-2 bg-slate-800 text-slate-300 text-xs font-bold rounded-lg">다음</button>
+          <button onclick="navigatePrev()" class="px-3 py-1.5 bg-slate-800 text-slate-300 text-xs font-bold rounded-lg transition-all">이전</button>
+          <button id="action-btn" class="px-4 py-2 bg-slate-700 text-slate-400 text-xs font-bold rounded-xl flex-grow text-center transition-all">답안 선택</button>
+          <button id="btn-next" class="px-3 py-1.5 bg-slate-800 text-slate-300 text-xs font-bold rounded-lg transition-all">다음</button>
+        </div>
+        <div class="border-t border-slate-850/60 pt-2.5 space-y-1.5">
+          <span class="text-[9px] font-bold text-slate-500 block">🧩 문항 다이렉트 워프 맵 및 마킹 상태 그리드</span>
+          <div class="flex flex-wrap gap-1" id="question-navigation-grid"></div>
         </div>
       </div>
     </div>
 
     <div id="result-view" class="hidden space-y-4 animate-fadeIn">
       <div class="bg-slate-900/40 border border-indigo-500/20 rounded-2xl p-5 text-center space-y-3">
-        <h2 class="text-lg font-black text-white">학습 정밀 진단 리포트</h2>
-        <div class="text-3xl font-black text-white">
+        <h2 class="text-sm sm:text-base font-black text-white">학습 무결성 진단 리포트</h2>
+        <div class="text-2xl sm:text-3xl font-black text-white">
           <span id="final-score" class="text-indigo-400">0</span> / <span id="final-total" class="text-slate-500">10</span> 문항
         </div>
-        <div class="text-xs text-amber-400 font-bold" id="result-reward-toast">💰 학습 성공 보상 지급 완료</div>
-        <button onclick="changeDashboardTab('storage')" class="px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded-xl mt-2">보관함 리턴</button>
+        <div class="text-[10px] sm:text-xs text-amber-400 font-bold tracking-tight" id="result-reward-toast"></div>
+        <button onclick="changeDashboardTab('storage')" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl mt-1 transition-all">보관함으로 돌아가기</button>
       </div>
-      <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-4 space-y-3">
-        <h3 class="text-xs font-bold text-white border-b border-slate-800 pb-1.5">선택지 상세 교정 대조표</h3>
-        <div class="divide-y divide-slate-800/60" id="review-list"></div>
+      <div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-4 space-y-2.5 text-left">
+        <h3 class="text-xs font-bold text-white border-b border-slate-800 pb-1.5">선택지 오답 정밀 비교 대조표</h3>
+        <div class="divide-y divide-slate-800/40" id="review-list"></div>
       </div>
     </div>
   </main>
 
   <div class="md:hidden fixed bottom-0 left-0 right-0 bg-slate-950/95 border-t border-slate-900 backdrop-blur-lg px-2 py-2 flex justify-around items-center z-50">
-    <button onclick="changeDashboardTab('profile')" class="flex flex-col items-center gap-0.5 text-[9px] font-bold text-slate-400" id="mb-tab-profile"><span>👤</span><span>프로필</span></button>
-    <button onclick="changeDashboardTab('subjects')" class="flex flex-col items-center gap-0.5 text-[9px] font-bold text-slate-400" id="mb-tab-subjects"><span>🗂️</span><span>과목</span></button>
-    <button onclick="changeDashboardTab('generate')" class="flex flex-col items-center gap-0.5 text-[9px] font-bold text-slate-400" id="mb-tab-generate"><span>✨</span><span>생성</span></button>
-    <button onclick="changeDashboardTab('storage')" class="flex flex-col items-center gap-0.5 text-[9px] font-bold text-slate-400" id="mb-tab-storage"><span>📚</span><span>보관함</span></button>
-    <button onclick="changeDashboardTab('settings')" class="flex flex-col items-center gap-0.5 text-[9px] font-bold text-slate-400" id="mb-tab-settings"><span>⚙️</span><span>설정</span></button>
+    <button onclick="changeDashboardTab('profile')" class="flex flex-col items-center gap-0.5 text-[9px] font-black text-slate-400" id="mb-tab-profile"><span>👤</span><span>프로필</span></button>
+    <button onclick="changeDashboardTab('subjects')" class="flex flex-col items-center gap-0.5 text-[9px] font-black text-slate-400" id="mb-tab-subjects"><span>🗂️</span><span>과목</span></button>
+    <button onclick="changeDashboardTab('generate')" class="flex flex-col items-center gap-0.5 text-[9px] font-black text-slate-400" id="mb-tab-generate"><span>✨</span><span>생성</span></button>
+    <button onclick="changeDashboardTab('storage')" class="flex flex-col items-center gap-0.5 text-[9px] font-black text-slate-400" id="mb-tab-storage"><span>📚</span><span>보관함</span></button>
+    <button onclick="changeDashboardTab('settings')" class="flex flex-col items-center gap-0.5 text-[9px] font-black text-slate-400" id="mb-tab-settings"><span>⚙️</span><span>설정</span></button>
   </div>
 
   <script type="module" src="./js/app.js"></script>
