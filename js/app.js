@@ -10,7 +10,6 @@ let moneyHistory = [];
 let userLevelState = { level: 1, exp: 0 };
 let lastAttendedDate = "";
 let schedulesState = [];
-let globalMemoText = "";
 let customSyncKey = DEFAULT_APP_ID;
 let accumulatedStats = { winPromoteCount: 0, perfectScoreCount: 0, totalSolvedCount: 0 };
 
@@ -25,7 +24,7 @@ let authModule = null;
 let geminiModule = null;
 
 // ==========================================
-// 1. 초기 화면 빈 탭 렌더링 에러 및 탭 이동 픽스
+// 1. 화면 렌더링 지연 제거 및 브라우징
 // ==========================================
 window.changeDashboardTab = function(id) {
   const views = ["profile", "subjects", "generate", "storage", "settings"];
@@ -51,15 +50,12 @@ window.changeDashboardTab = function(id) {
   const activeMbBtn = document.getElementById('mb-tab-' + id);
   if (activeMbBtn) activeMbBtn.className = "flex flex-col items-center gap-0.5 text-[9px] font-bold text-indigo-400";
 
-  if (id === 'profile' && window.renderProfileTab) window.renderProfileTab();
-  if (id === 'subjects' && window.renderSubjectManageTab) window.renderSubjectManageTab();
-  if (id === 'generate' && window.renderGenerateTab) window.renderGenerateTab();
-  if (id === 'storage' && window.renderStorageTab) window.renderStorageTab();
+  if (id === 'profile') window.renderProfileTab();
+  if (id === 'subjects') window.renderSubjectManageTab();
+  if (id === 'generate') window.renderGenerateTab();
+  if (id === 'storage') window.renderStorageTab();
 };
 
-// ==========================================
-// 2. 구글 로그인 "게스트 계정" 렌더링 타임 버그 픽스
-// ==========================================
 function loadStorageFromLocal() {
   try {
     studySubjects = JSON.parse(localStorage.getItem('studySubjects_v7') || '{}');
@@ -104,7 +100,7 @@ async function writeAndSyncStorage() {
 }
 
 // ==========================================
-// 3. 과목 즉시 반영 로직 (UI 먼저 그리고 나중에 저장)
+// 2. 과목/단원 생성: 대기 딜레이 현상 원천 차단
 // ==========================================
 window.createNewSubject = function() {
   const input = document.getElementById('subj-name-input');
@@ -114,7 +110,7 @@ window.createNewSubject = function() {
   studySubjects[id] = { id, name, chapters: {} };
   input.value = "";
   
-  // 🔥 비동기 대기를 없애고 화면을 즉각적으로 갱신합니다.
+  // UI부터 즉시 갱신한 뒤 비동기 저장 (딜레이 해결)
   window.renderSubjectManageTab();
   writeAndSyncStorage().catch(console.error);
 };
@@ -123,10 +119,8 @@ window.renderSubjectManageTab = function() {
   const list = document.getElementById('subject-manage-list');
   if (!list) return; list.innerHTML = '';
   const keys = Object.keys(studySubjects);
-  if (keys.length === 0) {
-    list.innerHTML = `<span class="text-[10px] text-slate-500 block">과목이 없습니다.</span>`;
-    return;
-  }
+  if (keys.length === 0) { list.innerHTML = `<span class="text-[10px] text-slate-500 block">과목이 없습니다.</span>`; return; }
+  
   keys.forEach(k => {
     const sub = studySubjects[k];
     const isSelected = selectedSubjectId === k;
@@ -138,21 +132,23 @@ window.renderSubjectManageTab = function() {
   });
 };
 
-window.createNewChapter = async function() {
+window.createNewChapter = function() {
   if (!selectedSubjectId) return;
   const el = document.getElementById('chap-name-input');
   const name = el.value.trim();
-  if (!name || !activeUploadedText) { alert("단원명 지정 및 파싱이 필요합니다."); return; }
+  if (!name || !activeUploadedText) { alert("단원명 지정 및 교안 업로드가 필요합니다."); return; }
+  
   const sub = studySubjects[selectedSubjectId];
   const cid = "chapter_" + Date.now();
   sub.chapters[cid] = { id: cid, name: name };
   const key = `${sub.name}___${name}`;
   studyMaterials[key] = { subject: sub.name, chapter: name, contents: [activeUploadedText] };
   chaptersState[key] = { subject: sub.name, chapter: name, tier: "Unrank", exp: 0, promotionReady: false };
+  
   activeUploadedText = ""; el.value = ""; document.getElementById('gen-file-input').value = ""; document.getElementById('gen-file-status').innerHTML = "교안 드래그 업로드";
   
   window.renderChapterListPanel();
-  writeAndSyncStorage();
+  writeAndSyncStorage().catch(console.error);
 };
 
 window.renderChapterListPanel = function() {
@@ -164,8 +160,14 @@ window.renderChapterListPanel = function() {
   });
 };
 
+window.deleteCurrentSubject = function() {
+  if (!selectedSubjectId || !confirm("완전 삭제하시겠습니까?")) return;
+  delete studySubjects[selectedSubjectId]; selectedSubjectId = null;
+  window.renderSubjectManageTab(); writeAndSyncStorage().catch(console.error);
+};
+
 // ==========================================
-// 4. 문제지 생성 무한 로딩 멈춤 해결
+// 3. 문제 출제: 에러 시 무한 계산중 멈춤 해결
 // ==========================================
 window.renderGenerateTab = function() {
   const sSel = document.getElementById('gen-subject-select'); if (!sSel) return;
@@ -211,7 +213,7 @@ window.handleBuildQuiz = async function() {
   const sId = document.getElementById('gen-subject-select').value;
   const cId = document.getElementById('gen-chapter-select').value;
   if (!sId || !cId) return;
-  if (!geminiModule) { alert("AI 모듈 초기화 중입니다."); return; }
+  if (!geminiModule) { alert("AI 모듈 로딩 중입니다."); return; }
 
   const sub = studySubjects[sId]; const chap = sub.chapters[cId];
   const sourceText = studyMaterials[`${sub.name}___${chap.name}`]?.contents.join("\n") || "";
@@ -222,7 +224,7 @@ window.handleBuildQuiz = async function() {
   btn.classList.add('hidden'); spinner.classList.remove('hidden');
 
   const countLimit = currentSelectedGenType === 'real' ? 20 : 10;
-  const prompt = `과목:${sub.name}\n범위:${chap.name}\n문항수:${countLimit}\n[출제 규칙]: 응용 사례를 배제하고 기출 원형(정의, 수식, 참거짓)으로 균등 출제하세요.\n교안:\n${sourceText.substring(0, 16000)}`;
+  const prompt = `과목:${sub.name}\n범위:${chap.name}\n문항수:${countLimit}\n[출제 규칙]: 전공 시험 스타일(정의,수식,비교)로 전체 내용을 균등 분산하여 JSON으로 출력하세요.\n교안문서:\n${sourceText.substring(0, 16000)}`;
 
   try {
     const raw = await geminiModule.callGemini(prompt, "JSON 데이터 스키마 규칙만 수행하는 출제 교수입니다.", true);
@@ -234,19 +236,17 @@ window.handleBuildQuiz = async function() {
       questions: parsed.questions.slice(0, countLimit).map((q, i) => ({ id: i + 1, ...q })), type: currentSelectedGenType
     });
     await writeAndSyncStorage();
-    
-    // 🔥성공 시 에러 없이 화면 전환 수행
-    btn.classList.remove('hidden'); spinner.classList.add('hidden');
     window.changeDashboardTab('storage');
   } catch (e) { 
-    alert("출제 실패: API를 확인해주세요. [" + e.message + "]"); 
-    // 🔥실패 시 반드시 스피너 제거
+    alert("출제 실패: " + e.message); 
+  } finally {
+    // 🔥에러가 나든 성공하든 무조건 로딩 해제
     btn.classList.remove('hidden'); spinner.classList.add('hidden');
   }
 };
 
 // ==========================================
-// 5. 연습 모드 다시 풀기 & 퀴즈 초록색/빨간색 피드백 원복
+// 4. 연습 문제 다시 풀기 & 정답 색상 즉시 피드백
 // ==========================================
 window.renderStorageTab = function() {
   const grid = document.getElementById('storage-sheets-grid'); if (!grid) return; grid.innerHTML = '';
@@ -271,7 +271,7 @@ window.filterStorageScope = function(subjName) {
       </div>
       <div class="flex justify-between items-center pt-2 border-t border-slate-850/60">
         <span class="text-[10px] font-black ${sheet.isSolved ? 'text-emerald-400' : 'text-amber-400'}">${sheet.isSolved ? `${sheet.score}점` : '미응시'}</span>
-        <button onclick="window.startQuizSheetTrigger('${sheet.id}')" class="px-2 py-1 bg-indigo-600 text-white rounded text-[10px] font-bold">${(sheet.isSolved && sheet.type === 'practice') ? '다시 풀기(XP 파밍)' : (sheet.isSolved ? '리뷰 보기' : '응시')}</button>
+        <button onclick="window.startQuizSheetTrigger('${sheet.id}')" class="px-2 py-1 bg-indigo-600 text-white rounded text-[10px] font-bold">${(sheet.isSolved && sheet.type === 'practice') ? '오답 다시풀기' : (sheet.isSolved ? '리뷰 보기' : '응시 시작')}</button>
       </div>
     </div>`;
   });
@@ -282,16 +282,32 @@ window.purgeSheetData = function(id) { quizSheets = quizSheets.filter(s => s.id 
 window.startQuizSheetTrigger = function(id) {
   activeQuizSheet = quizSheets.find(s => s.id === id); if (!activeQuizSheet) return;
   
-  // 🔥 연습 문제 무한 재수강 및 초기화 규칙 복원
+  // 🔥 [틀린 문제만 다시 풀기 로직 완벽 복원]
   if (activeQuizSheet.isSolved && activeQuizSheet.type === 'practice') {
-      if(confirm("이 연습 문제를 다시 푸시겠습니까? (기존 점수는 초기화됩니다)")) {
+      if(confirm("틀린 문제만 다시 푸시겠습니까?\n(이미 맞춘 문제는 초록색으로 보존되며, 기존 점수는 초기화됩니다.)")) {
           activeQuizSheet.isSolved = false; activeQuizSheet.score = null;
-          writeAndSyncStorage();
+          // 맞춘 문제는 유지하고, 틀린 문제만 초기화
+          activeQuizSheet.questions.forEach((q, i) => {
+              if (studentAnswers[i] && studentAnswers[i].chosen !== q.answer) {
+                  studentAnswers[i].chosen = null;
+                  studentAnswers[i].isSubmitted = false;
+              }
+          });
+          writeAndSyncStorage().catch(console.error);
       } else { return; }
+  } else if (!activeQuizSheet.isSolved) {
+      // 완전 처음 풀거나, 배열이 비어있을 때
+      if(!studentAnswers || studentAnswers.length !== activeQuizSheet.questions.length) {
+          studentAnswers = Array.from({ length: activeQuizSheet.questions.length }, () => ({ chosen: null, isSubmitted: false }));
+      }
   }
 
   currentQuestionIdx = 0;
-  studentAnswers = Array.from({ length: activeQuizSheet.questions.length }, () => ({ chosen: null, isSubmitted: false }));
+  // 안 푼 문제 중 가장 첫 번째 번호로 이동
+  for(let i=0; i<studentAnswers.length; i++){
+      if(!studentAnswers[i].isSubmitted) { currentQuestionIdx = i; break; }
+  }
+
   document.getElementById('home-view').classList.add('hidden');
   document.getElementById('quiz-view').classList.remove('hidden');
   document.getElementById('quiz-title-label').textContent = activeQuizSheet.title;
@@ -312,15 +328,11 @@ window.loadTargetQuestion = function() {
       const targetAns = studentAnswers[i];
       let stateClass = "bg-slate-950 text-slate-500 border-slate-850";
       
-      if (activeQuizSheet.type === 'practice') {
-          if (targetAns.isSubmitted) {
-              if (targetAns.chosen === item.answer) stateClass = "bg-emerald-900/40 text-emerald-400 border-emerald-500";
-              else stateClass = "bg-rose-900/40 text-rose-400 border-rose-500";
-          } else if (targetAns.chosen !== null) {
-              stateClass = "bg-indigo-900/30 text-indigo-400 border-indigo-800";
-          }
-      } else {
-          if (targetAns.chosen !== null) stateClass = "bg-indigo-900/30 text-indigo-400 border-indigo-800";
+      if (targetAns.isSubmitted) {
+          if (targetAns.chosen === item.answer) stateClass = "bg-emerald-900/40 text-emerald-400 border-emerald-500";
+          else stateClass = "bg-rose-900/40 text-rose-400 border-rose-500";
+      } else if (targetAns.chosen !== null) {
+          stateClass = "bg-indigo-900/30 text-indigo-400 border-indigo-800";
       }
       if (i === currentQuestionIdx) stateClass += " ring-1 ring-white scale-110 font-black";
       
@@ -328,14 +340,14 @@ window.loadTargetQuestion = function() {
     });
   }
 
-  // 🔥 선택지 목록 빨간색/초록색 색상 원복 및 치트 글로우 매핑
+  // 🔥 선택지 목록 빨간색/초록색 색상 원복 (치트 글로우 연동)
   const optContainer = document.getElementById('options-container'); optContainer.innerHTML = '';
   q.options.forEach((opt, idx) => {
     const isCorrectIndex = idx === q.answer;
     const cheatStyle = (isAdminCheatEnabled && isCorrectIndex) ? "admin-correct-hint border-amber-500" : "border-slate-800";
     let optClass = "w-full text-left p-3 rounded-xl border text-xs transition-all hover:bg-slate-900 ";
     
-    if (activeQuizSheet.type === 'practice' && ans.isSubmitted) {
+    if (ans.isSubmitted) {
         if (idx === q.answer) optClass += "border-emerald-500 bg-emerald-500/10 text-emerald-400 font-bold";
         else if (ans.chosen === idx) optClass += "border-rose-500 bg-rose-500/10 text-rose-400 font-bold";
         else optClass += "border-slate-800 text-slate-500";
@@ -355,13 +367,13 @@ window.loadTargetQuestion = function() {
 
   if (activeQuizSheet.type === 'practice' && !activeQuizSheet.isSolved) {
     if (ans.isSubmitted) {
-      actBtn.textContent = "채점 완료"; actBtn.className = "px-4 py-1.5 bg-slate-800 text-slate-500 text-xs font-bold rounded-xl";
+      actBtn.textContent = "채점 반영됨"; actBtn.className = "px-4 py-1.5 bg-slate-800 text-slate-500 text-xs font-bold rounded-xl";
       feedBox.classList.remove('hidden');
       feedBox.className = ans.chosen === q.answer ? "rounded-xl p-3 bg-emerald-500/5 border border-emerald-500/30 text-emerald-400 text-xs mt-1" : "rounded-xl p-3 bg-rose-500/5 border border-rose-500/30 text-rose-400 text-xs mt-1";
       document.getElementById('feedback-title').textContent = ans.chosen === q.answer ? "🎉 정답입니다!" : "❌ 오답입니다.";
       document.getElementById('explanation-text').textContent = q.explanation;
     } else if (ans.chosen !== null) {
-      actBtn.textContent = "🎯 즉시 채점"; actBtn.className = "px-4 py-1.5 bg-indigo-600 text-white text-xs font-black rounded-xl";
+      actBtn.textContent = "🎯 즉시 채점"; actBtn.className = "px-4 py-1.5 bg-indigo-600 text-white text-xs font-black rounded-xl cursor-pointer";
       actBtn.onclick = () => { ans.isSubmitted = true; accumulatedStats.totalSolvedCount++; window.loadTargetQuestion(); };
       feedBox.classList.add('hidden');
     } else {
@@ -421,6 +433,9 @@ window.submitEntireQuizSheet = async function() {
     userLevelState.exp += (correctHits * 5);
   }
 
+  // 레벨업 트리거
+  while (userLevelState.exp >= 50) { userLevelState.exp -= 50; userLevelState.level++; }
+
   await writeAndSyncStorage();
   
   document.getElementById('quiz-view').classList.add('hidden');
@@ -436,15 +451,15 @@ window.submitEntireQuizSheet = async function() {
       <p class="mt-0.5 ${isCorrect ? 'text-emerald-400' : 'text-rose-400'}">선택: ${q.options[studentAnswers[i].chosen] || "미응시"} | 정답: ${q.options[q.answer]}</p></div>`;
   });
   
-  // 분석 리포트 초기화
+  // ✨ AI 분석 리포트 버튼 초기화 복구
   document.getElementById('analysis-report-container').classList.add('hidden');
   document.getElementById('generate-analysis-btn').classList.remove('hidden');
   document.getElementById('generate-analysis-btn').disabled = false;
-  document.getElementById('generate-analysis-btn').textContent = "✨ 취약점 분석 리포트 생성";
+  document.getElementById('generate-analysis-btn').textContent = "✨ 틀린 오답 기반 취약점 분석 리포트 생성";
 };
 
 // ==========================================
-// 6. ✨ AI 분석결과 리포트 통신 복원
+// 5. ✨ 취약점 분석 리포트 (Gemini 연동) 복구
 // ==========================================
 window.generateAnalysisReport = async function() {
   const btn = document.getElementById('generate-analysis-btn');
@@ -456,24 +471,24 @@ window.generateAnalysisReport = async function() {
   
   let wrongData = [];
   activeQuizSheet.questions.forEach((q, i) => {
-      if(studentAnswers[i].chosen !== q.answer) wrongData.push(`문제: ${q.question}\n선택: ${q.options[studentAnswers[i].chosen]}\n정답: ${q.options[q.answer]}`);
+      if(studentAnswers[i].chosen !== q.answer) wrongData.push(`문제: ${q.question}\n학생선택: ${q.options[studentAnswers[i].chosen]}\n정답: ${q.options[q.answer]}`);
   });
   
   const prompt = wrongData.length === 0 ? "이 학생은 만점을 받았습니다. 칭찬과 함께 다음 학습을 짧게 제안해주세요." : `다음 학생의 오답 데이터를 바탕으로 취약 개념을 심화 분석하고 학습 방향을 제시하는 '분석결과리포트'를 작성하세요.\n${wrongData.join('\n\n')}`;
   
   try {
-      const res = await geminiModule.callGemini(prompt, "친절하고 전문적인 전공 핵심 AI 튜터입니다.");
+      const res = await geminiModule.callGemini(prompt, "친절하고 전문적인 대학 전공 AI 튜터 교수입니다.");
       container.classList.remove('hidden');
       content.textContent = res;
       btn.classList.add('hidden');
   } catch(e) {
-      alert("분석 실패: " + e.message);
-      btn.textContent = "✨ 취약점 분석 리포트 생성"; btn.disabled = false;
+      alert("분석 실패: API 연동 상태를 확인하세요. [" + e.message + "]");
+      btn.textContent = "✨ 틀린 오답 기반 취약점 분석 리포트 생성"; btn.disabled = false;
   }
 };
 
 // ==========================================
-// 7. 치트 권한 및 프로필 UI 렌더링
+// 6. 업적 및 레벨 바 프로필 렌더링 완벽 복원
 // ==========================================
 window.toggleAdminMode = function() {
   isAdminCheatEnabled = !isAdminCheatEnabled;
@@ -482,8 +497,19 @@ window.toggleAdminMode = function() {
 
 window.renderProfileTab = function() {
   document.getElementById('pocket-money-balance').textContent = `${pocketMoney.toLocaleString()}원`;
-  document.getElementById('profile-level-badge').textContent = `LV.${userLevelState.level}`;
-  document.getElementById('profile-exp-label').textContent = `${userLevelState.exp} / 50 XP`;
+  document.getElementById('user-level-badge').textContent = `LV.${userLevelState.level}`;
+  document.getElementById('user-xp-label').textContent = `${userLevelState.exp} / 50 XP`;
+  document.getElementById('user-xp-bar').style.width = `${(userLevelState.exp / 50) * 100}%`;
+
+  // 3대 챌린지 업적 바 복원
+  document.getElementById('achievement-prom-count').textContent = `${accumulatedStats.winPromoteCount}/3`;
+  document.getElementById('achievement-prom-bar').style.width = `${Math.min((accumulatedStats.winPromoteCount / 3) * 100, 100)}%`;
+  
+  document.getElementById('achievement-perfect-count').textContent = `${accumulatedStats.perfectScoreCount}/5`;
+  document.getElementById('achievement-perfect-bar').style.width = `${Math.min((accumulatedStats.perfectScoreCount / 5) * 100, 100)}%`;
+  
+  document.getElementById('achievement-solved-count').textContent = `${accumulatedStats.totalSolvedCount}/100`;
+  document.getElementById('achievement-solved-bar').style.width = `${Math.min((accumulatedStats.totalSolvedCount / 100) * 100, 100)}%`;
 
   const accordion = document.getElementById('subject-accordion-container'); if (!accordion) return; accordion.innerHTML = '';
   const keys = Object.keys(studySubjects);
@@ -526,13 +552,11 @@ window.importProgressText = function() {
 window.clearAllDataStorage = function() { if(confirm("포맷하시겠습니까?")) { localStorage.clear(); location.reload(); } };
 
 // ==========================================
-// 8. 초기화 및 빈 화면 버그 픽스
+// 7. 빈 화면 방지 및 게스트 버그 해결 초기화
 // ==========================================
 document.addEventListener('DOMContentLoaded', async () => {
   loadStorageFromLocal();
-  
-  // 🔥 하얀 빈 탭 방지용 강제 렌더링 지연 호출
-  setTimeout(() => { window.changeDashboardTab('profile'); }, 50);
+  window.changeDashboardTab('profile'); // DOM 로드 직후 프로필 탭 강제 활성화
   
   document.getElementById('gen-file-input')?.addEventListener('change', async (e) => {
     const file = e.target.files[0]; if (!file) return;
@@ -553,11 +577,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       authModule.onAuthStateChanged(authModule.auth, async (user) => {
         if (user) {
           window.currentUser = user;
-          // 🔥 게스트 계정 표기 버그 완전 해결
+          // 🔥 게스트 계정 표기 버그 완전 해결: 즉시 DOM에 사용자 이름 매핑
           const nameEl = document.getElementById('profile-user-name');
           const emailEl = document.getElementById('profile-user-email');
           if(nameEl) nameEl.textContent = user.displayName || "구글 사용자";
-          if(emailEl) emailEl.textContent = user.email || "(연동됨)";
+          if(emailEl) emailEl.textContent = user.email || "클라우드 연동됨";
           
           const cloudData = await authModule.loadFromCloud(user.uid, customSyncKey);
           if (cloudData) {
