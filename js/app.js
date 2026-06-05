@@ -1,3 +1,4 @@
+// js/app.js
 const DEFAULT_APP_ID = "c_f04126b33eaae657_ai_v321_sys";
 
 let studySubjects = {};
@@ -24,7 +25,7 @@ let authModule = null;
 let geminiModule = null;
 
 // ==========================================
-// 윈도우 인터페이스 코어 바인딩 스위치 (ReferenceError 원천 봉쇄)
+// 글로벌 뷰 라우터 (윈도우 선제 바인딩)
 // ==========================================
 window.changeDashboardTab = function(id) {
   const views = ["profile", "subjects", "generate", "storage", "settings"];
@@ -75,7 +76,7 @@ function loadStorageFromLocal() {
     if (memoArea) memoArea.value = globalMemoText;
     const keyInput = document.getElementById('custom-sync-key-input');
     if (keyInput) keyInput.value = customSyncKey;
-  } catch (e) { console.warn("Local storage loading exception bypassing."); }
+  } catch (e) { console.warn("로컬 스토리지 캐시 로드 우회"); }
 }
 
 async function writeAndSyncStorage() {
@@ -100,7 +101,6 @@ async function writeAndSyncStorage() {
   }
 }
 
-// 📑 메모장 내용 가속 세션 적재 실시간 싱크 처리 함수
 window.saveGlobalMemoText = function() {
   const area = document.getElementById('global-memo-area');
   if (area) {
@@ -110,15 +110,15 @@ window.saveGlobalMemoText = function() {
 };
 
 // ==========================================
-// 🛠️ 오리지널 3대 마스터 치트 엔진 로직 100% 원형 복원
+// 🛠️ 오리지널 치트 인프라 맵 유효화
 // ==========================================
 window.toggleAdminMode = function() {
   isAdminCheatEnabled = !isAdminCheatEnabled;
   const panel = document.getElementById('admin-cheat-panel');
   const macros = document.getElementById('admin-quiz-macros');
-  if (panel) panel.className = isAdminCheatEnabled ? "bg-amber-950/20 border border-amber-500/30 p-4 rounded-xl text-left space-y-2 block animate-fadeIn" : "hidden";
+  if (panel) panel.className = isAdminCheatEnabled ? "bg-amber-950/20 border border-amber-500/30 p-4 rounded-xl text-left space-y-2 block" : "hidden";
   if (macros) macros.className = isAdminCheatEnabled ? "p-2 bg-amber-950/10 border border-dashed border-amber-500/20 rounded-lg flex gap-2 block" : "hidden";
-  alert(`🛠️ 관리자 제어 권한 인터페이스 상태가 ${isAdminCheatEnabled ? '활성화' : '비활성화'}되었습니다.`);
+  alert(`🛠️ 치트 디버깅 패널 인터페이스 상태: ${isAdminCheatEnabled ? '활성화' : '비활성화'}`);
 };
 
 window.adminForceChallenger = function() {
@@ -129,20 +129,20 @@ window.adminForceChallenger = function() {
     chaptersState[k].promotionReady = false;
   });
   accumulatedStats.winPromoteCount = 3;
-  writeAndSyncStorage().then(() => { window.renderProfileTab(); alert("🔮 전 전공 범위 학업 등급 수치가 '마스터'로 강제 치트 인젝션되었습니다."); });
+  writeAndSyncStorage().then(() => { window.renderProfileTab(); alert("🔮 전 과목의 단원 티어가 '마스터' 등급으로 강제 갱신되었습니다."); });
 };
 
 window.adminInstantPromote = function() {
   if (!isAdminCheatEnabled) return;
   const sId = document.getElementById('gen-subject-select').value;
   const cId = document.getElementById('gen-chapter-select').value;
-  if (!sId || !cId) { alert("승급 처리할 대상 과목 및 단원을 상단 콤보박스에서 먼저 선택하십시오."); return; }
+  if (!sId || !cId) { alert("상단 생성 설정 탭에서 대상 과목과 단원을 먼저 선택하십시오."); return; }
   const sub = studySubjects[sId]; const chap = sub.chapters[cId];
   const key = `${sub.name}___${chap.name}`;
   if (!chaptersState[key]) chaptersState[key] = { tier: "Unrank", exp: 0 };
   chaptersState[key].exp = 10;
   chaptersState[key].promotionReady = true;
-  writeAndSyncStorage().then(() => { window.updateGenerateTypeLock(); alert("⚡ 해당 과목 단원에 승급 수치 10 XP가 주입되어 승급 챌린저전이 즉각 강제 개방되었습니다."); });
+  writeAndSyncStorage().then(() => { window.updateGenerateTypeLock(); alert("⚡ 선택한 챕터 범위의 승급전 요건(10 XP)이 즉시 마운트되었습니다."); });
 };
 
 window.adminSubmitAllCorrect = function() {
@@ -151,18 +151,15 @@ window.adminSubmitAllCorrect = function() {
     studentAnswers[i] = { chosen: q.answer, isSubmitted: true };
   });
   window.loadTargetQuestion();
-  alert("🎯 전 문항 정답 마킹 마스터 매크로 연산 처리가 완료되었습니다. 최종 제출 버튼을 누르십시오.");
+  alert("🎯 마킹 가이드 정답 자동 동기화 처리가 완료되었습니다. 최종 제출을 클릭하십시오.");
 };
 
-// ==========================================
-// ⚙️ 오리지널 커스텀 동기화 키 제어 및 수동 백업 처리 엔진
-// ==========================================
 window.updateCustomSyncKey = function() {
   const input = document.getElementById('custom-sync-key-input');
   if (!input || !input.value.trim()) return;
   customSyncKey = input.value.trim();
   localStorage.setItem('customSyncKey_v7', customSyncKey);
-  alert(`🔒 클라우드 저장 허브 동기화 고유 키 자산이 [ ${customSyncKey} ] (으)로 재설정되었습니다.`);
+  alert(`🔒 클라우드 저장 분기 식별 키 자산이 [ ${customSyncKey} ] (으)로 업데이트되었습니다.`);
 };
 
 window.manualSaveToCloud = async function() {
@@ -170,8 +167,8 @@ window.manualSaveToCloud = async function() {
   try {
     const pkg = { studySubjects, studyMaterials, chaptersState, quizSheets, pocketMoney, moneyHistory, userLevelState, lastAttendedDate, schedulesState, globalMemoText, accumulatedStats };
     await authModule.saveToCloud(window.currentUser.uid, pkg, customSyncKey);
-    alert("📤 현재 로컬 진도 데이터 스냅샷이 클라우드 인프라 문서 영역에 영구 보존 덮어쓰기 완료되었습니다.");
-  } catch (e) { alert("전송 연산 실패: " + e.message); }
+    alert("📤 로컬 진도 데이터 스냅샷이 지정된 싱크 스페이스에 영구 백업 기입되었습니다.");
+  } catch (e) { alert("동기화 통신 에러: " + e.message); }
 };
 
 window.manualLoadFromCloud = async function() {
@@ -182,12 +179,12 @@ window.manualLoadFromCloud = async function() {
       studySubjects = cloudData.studySubjects || {}; studyMaterials = cloudData.studyMaterials || {}; chaptersState = cloudData.chaptersState || {}; quizSheets = cloudData.quizSheets || []; pocketMoney = cloudData.pocketMoney || 0; moneyHistory = cloudData.moneyHistory || []; userLevelState = cloudData.userLevelState || {level:1,exp:0}; lastAttendedDate = cloudData.lastAttendedDate || ""; schedulesState = cloudData.schedulesState || []; globalMemoText = cloudData.globalMemoText || ""; accumulatedStats = cloudData.accumulatedStats || {winPromoteCount:0,perfectScoreCount:0,totalSolvedCount:0};
       await writeAndSyncStorage();
       location.reload();
-    } else { alert("해당 커스텀 싱크 키 스페이스 내부에 저장 데이터 문서 백업본이 발견되지 않았습니다."); }
-  } catch (e) { alert("수신 장애: " + e.message); }
+    } else { alert("해당 동기화 스페이스 내에 백업 Progress 데이터를 찾을 수 없습니다."); }
+  } catch (e) { alert("데이터 수신 장애: " + e.message); }
 };
 
 // ==========================================
-// 과목/단원 관리 코어 엔진 복원
+// 과목 관리 및 단원 빌더
 // ==========================================
 window.createNewSubject = function() {
   const input = document.getElementById('subj-name-input');
@@ -204,7 +201,7 @@ window.renderSubjectManageTab = function() {
   const list = document.getElementById('subject-manage-list');
   if (!list) return; list.innerHTML = '';
   const keys = Object.keys(studySubjects);
-  if (keys.length === 0) { list.innerHTML = `<span class="text-[10px] text-slate-500 block text-center py-2">보유 중인 과목이 없습니다.</span>`; return; }
+  if (keys.length === 0) { list.innerHTML = `<span class="text-[10px] text-slate-500 block text-center py-2">과목이 없습니다.</span>`; return; }
   
   keys.forEach(k => {
     const sub = studySubjects[k];
@@ -221,7 +218,7 @@ window.createNewChapter = function() {
   if (!selectedSubjectId) return;
   const el = document.getElementById('chap-name-input');
   const name = el.value.trim();
-  if (!name || !activeUploadedText) { alert("단원명 및 교안 분석 파일 적재 상태를 확인하십시오."); return; }
+  if (!name || !activeUploadedText) { alert("단원명 지정 및 파싱 파일 적재가 완료되지 않았습니다."); return; }
   
   const sub = studySubjects[selectedSubjectId];
   const cid = "chapter_" + Date.now();
@@ -244,8 +241,14 @@ window.renderChapterListPanel = function() {
   });
 };
 
+window.deleteCurrentSubject = function() {
+  if (!selectedSubjectId || !confirm("완전 폐강하시겠습니까?")) return;
+  delete studySubjects[selectedSubjectId]; selectedSubjectId = null;
+  window.renderSubjectManageTab(); writeAndSyncStorage().catch(() => {});
+};
+
 // ==========================================
-// 📊 보관함 및 오리지널 정오 리포트 조회 컴포넌트 복원
+// 📚 보관함 및 오리지널 정오 대조 리포트 복원 구역
 // ==========================================
 window.renderStorageTab = function() {
   const grid = document.getElementById('storage-sheets-grid'); if (!grid) return; grid.innerHTML = '';
@@ -278,11 +281,11 @@ window.filterStorageScope = function(subjName) {
 
     grid.innerHTML += `<div class="p-3.5 rounded-xl border border-slate-850 bg-slate-900/40 space-y-2">
       <div>
-        <div class="flex justify-between text-[9px] text-slate-500 font-bold"><span>📅 ${sheet.createdDate}</span><button onclick="window.purgeSheetData('${sheet.id}')" class="text-rose-500">삭제</button></div>
+        <div class="flex justify-between text-[9px] text-slate-500 font-bold"><span>📅 ${sheet.createdDate}</span><button onclick="window.purgeSheetData('${sheet.id}')" class="text-rose-400">삭제</button></div>
         <h4 class="text-xs font-black text-slate-200 mt-1 truncate">${sheet.title}</h4>
       </div>
       <div class="flex justify-between items-center pt-2 border-t border-slate-850/60">
-        <span class="text-[10px] font-black ${sheet.isSolved ? 'text-emerald-400' : 'text-amber-400'}">${sheet.isSolved ? `${sheet.score}점` : '미응시'}</span>
+        <span class="text-[10px] font-black ${sheet.isSolved ? 'text-emerald-400' : 'text-amber-400'}">${sheet.isSolved ? `${sheet.score}점` : '진입 대기'}</span>
         ${buttonCluster}
       </div>
     </div>`;
@@ -291,29 +294,39 @@ window.filterStorageScope = function(subjName) {
 
 window.purgeSheetData = function(id) { quizSheets = quizSheets.filter(s => s.id !== id); writeAndSyncStorage(); window.renderStorageTab(); };
 
+// [요구사항 구현] 이미 풀린 시험지의 정오표 및 해설을 완벽하게 동기화해 여는 분석 함수
 window.viewQuizAnalysisReport = function(id) {
   activeQuizSheet = quizSheets.find(s => s.id === id); if (!activeQuizSheet) return;
   
+  // 라우터 수동 스위칭 격리 개방
   document.getElementById('home-view').classList.add('hidden');
   document.getElementById('quiz-view').classList.add('hidden');
   document.getElementById('result-view').classList.remove('hidden');
   
-  let matchHits = 0;
+  let tempHits = 0;
   activeQuizSheet.questions.forEach((q, i) => {
-    if (studentAnswers[i] && studentAnswers[i].chosen === q.answer) matchHits++;
+    if (studentAnswers[i] && studentAnswers[i].chosen === q.answer) tempHits++;
   });
   
-  document.getElementById('final-score').textContent = activeQuizSheet.score !== null ? Math.round(activeQuizSheet.score / 10) : matchHits;
+  document.getElementById('final-score').textContent = activeQuizSheet.score !== null ? Math.round(activeQuizSheet.score * (activeQuizSheet.questions.length / 100)) : tempHits;
   document.getElementById('final-total').textContent = activeQuizSheet.questions.length;
-  document.getElementById('result-reward-toast').textContent = `제출 오답 대조 리포트 열람 중입니다.`;
+  document.getElementById('result-reward-toast').textContent = `과거 완료된 제출 이력 분석 대조표 모드입니다.`;
 
+  // 📝 [요구사항 원복] 선택지 매칭 및 실제 정답 해설 정밀 인젝션 구현
   const rList = document.getElementById('review-list'); rList.innerHTML = '';
   activeQuizSheet.questions.forEach((q, i) => {
     const isCorrect = studentAnswers[i] && studentAnswers[i].chosen === q.answer;
-    const marker = (studentAnswers[i] && studentAnswers[i].chosen !== null) ? q.options[studentAnswers[i].chosen] : "미응시 오답 공란";
-    rList.innerHTML += `<div class="py-2.5 text-[10px] border-b border-slate-900/60"><p class="font-bold text-slate-200">${i+1}. ${q.question}</p>
-      <p class="mt-0.5 ${isCorrect ? 'text-emerald-400' : 'text-rose-400'}">선택 마킹: ${marker} | 실제 정답: ${q.options[q.answer]}</p>
-      <p class="text-[9px] text-slate-400 mt-1">💡 해설근거: ${q.explanation}</p></div>`;
+    const studentChoiceText = (studentAnswers[i] && studentAnswers[i].chosen !== null) ? q.options[studentAnswers[i].chosen] : "미응시 오답";
+    rList.innerHTML += `
+      <div class="py-3 text-[11px] border-b border-slate-900/80">
+        <p class="font-bold text-slate-200">${i+1}. ${q.question}</p>
+        <p class="mt-1 ${isCorrect ? 'text-emerald-400' : 'text-rose-400'} font-medium">
+          ❌ 내가 선택한 선지: ${studentChoiceText} | 🎯 실제 정답: ${q.options[q.answer]}
+        </p>
+        <p class="text-[10px] text-slate-400 mt-1.5 leading-relaxed bg-slate-950/60 p-2 rounded border border-slate-900">
+          💡 문항 해설: ${q.explanation}
+        </p>
+      </div>`;
   });
   
   document.getElementById('analysis-report-container').classList.add('hidden');
@@ -324,8 +337,9 @@ window.viewQuizAnalysisReport = function(id) {
 window.startQuizSheetTrigger = function(id) {
   activeQuizSheet = quizSheets.find(s => s.id === id); if (!activeQuizSheet) return;
   
+  // 🔥 [연습 과제 격리 다시풀기 룰 충족] 맞춘 문제는 유지하고 틀린 번호 세션만 초기화
   if (activeQuizSheet.isSolved && activeQuizSheet.type === 'practice') {
-    if(confirm("맞춘 문제는 상태를 유지 보존하고 틀린 문제만 골라 다시 풀겠습니까?")) {
+    if(confirm("맞춘 문제는 초록색 정답 상태로 보존하고 오답 문항만 초기화하여 다시 풀이하시겠습니까?")) {
         activeQuizSheet.isSolved = false; activeQuizSheet.score = null;
         activeQuizSheet.questions.forEach((q, i) => {
             if (studentAnswers[i] && studentAnswers[i].chosen !== q.answer) {
@@ -336,7 +350,7 @@ window.startQuizSheetTrigger = function(id) {
         writeAndSyncStorage().catch(() => {});
     } else { return; }
   } else if (!activeQuizSheet.isSolved) {
-    if(!studentAnswers || studentAnswers.length !== activeQuizSheet.questions.length) {
+    if (!studentAnswers || studentAnswers.length !== activeQuizSheet.questions.length) {
       studentAnswers = Array.from({ length: activeQuizSheet.questions.length }, () => ({ chosen: null, isSubmitted: false }));
     }
   }
@@ -381,13 +395,15 @@ window.loadTargetQuestion = function() {
 
   const optContainer = document.getElementById('options-container'); optContainer.innerHTML = '';
   q.options.forEach((opt, idx) => {
-    let optClass = "w-full text-left p-3 rounded-xl border text-xs transition-all hover:bg-slate-900 border-slate-880";
+    let optClass = "w-full text-left p-3 rounded-xl border text-xs transition-all hover:bg-slate-900 border-slate-850 ";
     
     if (ans.isSubmitted) {
-      if (idx === q.answer) optClass += " border-emerald-500 bg-emerald-500/10 text-emerald-400 font-bold";
-      else if (ans.chosen === idx) optClass += " border-rose-500 bg-rose-500/10 text-rose-400 font-bold";
+      if (idx === q.answer) optClass += "border-emerald-500 bg-emerald-500/10 text-emerald-400 font-bold";
+      else if (ans.chosen === idx) optClass += "border-rose-500 bg-rose-500/10 text-rose-400 font-bold";
+      else optClass += "text-slate-500 border-slate-900";
     } else {
-      if (ans.chosen === idx) optClass += " border-indigo-500 bg-indigo-500/10 text-indigo-400 font-bold";
+      if (ans.chosen === idx) optClass += "border-indigo-500 bg-indigo-500/10 text-indigo-400 font-bold";
+      else optClass += "text-slate-200";
     }
 
     const btn = document.createElement('button');
@@ -408,7 +424,7 @@ window.loadTargetQuestion = function() {
       document.getElementById('explanation-text').textContent = q.explanation;
     } else if (ans.chosen !== null) {
       actBtn.textContent = "🎯 즉시 채점"; actBtn.className = "px-4 py-1.5 bg-indigo-600 text-white text-xs font-black rounded-xl cursor-pointer";
-      actBtn.onclick = () => { ans.isSubmitted = true; accumulatedStats.totalSolvedCount++; window.loadTargetQuestion(); };
+      actBtn.onclick = () => { ans.isSubmitted = true; window.loadTargetQuestion(); };
       feedBox.classList.add('hidden');
     } else {
       actBtn.textContent = "마킹 대기"; actBtn.className = "px-4 py-1.5 bg-slate-800 text-slate-500 text-xs font-bold rounded-xl"; feedBox.classList.add('hidden');
@@ -432,25 +448,43 @@ window.jumpToDirectQuestion = function(idx) { currentQuestionIdx = idx; window.l
 window.navigatePrev = function() { if (currentQuestionIdx > 0) { currentQuestionIdx--; window.loadTargetQuestion(); } };
 window.navigateNext = function() { if (currentQuestionIdx < activeQuizSheet.questions.length - 1) { currentQuestionIdx++; window.loadTargetQuestion(); } };
 
+// ==========================================
+// 최종 제출 연산 (용돈 보상 규칙 위반 버그 차단 완료)
+// ==========================================
 window.submitEntireQuizSheet = async function() {
   if (activeQuizSheet.isSolved) { window.changeDashboardTab('storage'); return; }
   
-  let scoreHits = 0;
+  let correctHits = 0;
   activeQuizSheet.questions.forEach((q, i) => {
-    if (studentAnswers[i] && studentAnswers[i].chosen === q.answer) scoreHits++;
+    if (studentAnswers[i] && studentAnswers[i].chosen === q.answer) correctHits++;
   });
 
-  const finalScore = Math.round((scoreHits / activeQuizSheet.questions.length) * 100);
-  activeQuizSheet.score = finalScore; activeQuizSheet.isSolved = true;
-  pocketMoney += scoreHits * 500;
+  const finalScore = Math.round((correctHits / activeQuizSheet.questions.length) * 100);
+  
+  // 📝 [버그 픽스] 다시 풀기가 아닌 "최초 풀이 단계"일 때만 누적 문항 수 업적 스택 가산
+  if (activeQuizSheet.score === null || activeQuizSheet.score === undefined) {
+    accumulatedStats.totalSolvedCount += activeQuizSheet.questions.length;
+  }
+
+  // 📝 [버그 픽스 및 규칙 강제] 문제지 최초 100점 도달 시에만 현실 용돈 1,000원 정액 적립 제한 필터
+  let earnedMoneyToast = "최초 100점 미달 또는 다시풀기 상태이므로 추가 용돈 보상이 보류되었습니다.";
+  if (finalScore === 100 && (!activeQuizSheet.hasReachedPerfect)) {
+    pocketMoney += 1000;
+    activeQuizSheet.hasReachedPerfect = true; // 완벽 보상 트리거 락
+    accumulatedStats.perfectScoreCount++;
+    earnedMoneyToast = "🎯 축하합니다! 문제지 최초 100점 달성 성과금 +1,000원이 지갑에 예치되었습니다!";
+  }
+
+  activeQuizSheet.score = finalScore; 
+  activeQuizSheet.isSolved = true;
   
   if (activeQuizSheet.type === 'practice') {
     const key = `${activeQuizSheet.subject}___${activeQuizSheet.chapter}`;
     if (chaptersState[key]) {
-      chaptersState[key].exp += scoreHits;
+      chaptersState[key].exp += correctHits;
       if (chaptersState[key].exp >= 10 && chaptersState[key].tier !== "마스터") chaptersState[key].promotionReady = true;
     }
-    userLevelState.exp += (scoreHits * 2);
+    userLevelState.exp += (correctHits * 2);
   } else {
     const key = `${activeQuizSheet.subject}___${activeQuizSheet.chapter}`;
     if (chaptersState[key]) {
@@ -459,30 +493,38 @@ window.submitEntireQuizSheet = async function() {
       else chaptersState[key].tier = "실버";
       chaptersState[key].exp = 0; chaptersState[key].promotionReady = false;
     }
-    userLevelState.exp += (scoreHits * 5);
+    userLevelState.exp += (correctHits * 5);
   }
 
   while (userLevelState.exp >= 50) { userLevelState.exp -= 50; userLevelState.level++; }
-  if (finalScore === 100) accumulatedStats.perfectScoreCount++;
 
   await writeAndSyncStorage().catch(() => {});
   
+  // 🔥 [버그 픽스 및 전이 강제] 제출 클릭 즉시 풀이창을 닫고 진단 리포트 뷰(result)로 강제 화면 점프
   document.getElementById('quiz-view').classList.add('hidden');
   document.getElementById('result-view').classList.remove('hidden');
-  document.getElementById('final-score').textContent = scoreHits;
+  
+  document.getElementById('final-score').textContent = correctHits;
   document.getElementById('final-total').textContent = activeQuizSheet.questions.length;
-  document.getElementById('result-reward-toast').textContent = `정답 보상 현실 용돈 가산: +${scoreHits * 500}원 지급 처리 완료`;
+  document.getElementById('result-reward-toast').textContent = earnedMoneyToast;
 
+  // 오답 매칭 결과표 실시간 주입
   const rList = document.getElementById('review-list'); rList.innerHTML = '';
   activeQuizSheet.questions.forEach((q, i) => {
     const isCorrect = studentAnswers[i] && studentAnswers[i].chosen === q.answer;
-    rList.innerHTML += `<div class="py-2.5 text-[10px] border-b border-slate-900/60"><p class="font-bold text-slate-200">${i+1}. ${q.question}</p>
-      <p class="mt-0.5 ${isCorrect ? 'text-emerald-400' : 'text-rose-400'}">마킹 번호: ${q.options[studentAnswers[i].chosen] || "미응시"} | 정답: ${q.options[q.answer]}</p></div>`;
+    rList.innerHTML += `
+      <div class="py-2.5 text-[10px] border-b border-slate-900/60">
+        <p class="font-bold text-slate-200">${i+1}. ${q.question}</p>
+        <p class="mt-0.5 ${isCorrect ? 'text-emerald-400' : 'text-rose-400'}">
+          선택 마킹 선지: ${q.options[studentAnswers[i].chosen] || "미응시"} | 정답 가이드라인: ${q.options[q.answer]}
+        </p>
+      </div>`;
   });
   
   document.getElementById('analysis-report-container').classList.add('hidden');
   document.getElementById('generate-analysis-btn').classList.remove('hidden');
   document.getElementById('generate-analysis-btn').disabled = false;
+  document.getElementById('generate-analysis-btn').textContent = "✨ 틀린 오답 기반 취약점 분석 리포트 생성";
 };
 
 window.generateAnalysisReport = async function() {
@@ -491,43 +533,28 @@ window.generateAnalysisReport = async function() {
   const content = document.getElementById('analysis-report-content');
   if(!geminiModule) return;
   
-  btn.textContent = "오답 요소 취약점 추출 중..."; btn.disabled = true;
+  btn.textContent = "오답 데이터 기반 정밀 패턴 분석 중..."; btn.disabled = true;
   let wrongData = [];
   activeQuizSheet.questions.forEach((q, i) => {
     if(studentAnswers[i] && studentAnswers[i].chosen !== q.answer) wrongData.push(`문제:${q.question}\n선택:${q.options[studentAnswers[i].chosen]}\n정답:${q.options[q.answer]}`);
   });
   
-  const prompt = wrongData.length === 0 ? "만점입니다. 격려 코멘트를 한 줄 작성해 주세요." : `오답 내역 진단 분석서를 학술적으로 추출하세요.\n${wrongData.join('\n\n')}`;
+  const prompt = wrongData.length === 0 ? "만점 도달 진단서 코멘트를 도출하세요." : `틀린 오답의 개념 보정 레포트를 학술적으로 도출하세요.\n${wrongData.join('\n\n')}`;
   
   try {
-    const res = await geminiModule.callGemini(prompt, "대학 전공 학업 딥러닝 지도교수입니다.");
+    const res = await geminiModule.callGemini(prompt, "대학 학술 AI 지도교수 튜터입니다.");
     container.classList.remove('hidden');
     content.textContent = res;
     btn.classList.add('hidden');
   } catch(e) {
-    alert("분석서 로드 실패: " + e.message);
+    alert("오답 분석 지연: " + e.message);
     btn.textContent = "✨ 취약점 분석 리포트 생성"; btn.disabled = false;
   }
 };
 
 // ==========================================
-// 📅 오리지널 플래너 및 캘린더 엔진 드로잉 매퍼
+// 📅 오리지널 플래너 및 캘린더 드로잉 매퍼
 // ==========================================
-window.addScheduleItem = function() {
-  const el = document.getElementById('schedule-text-input');
-  if (!el || !el.value.trim()) return;
-  schedulesState.push({ id: "sch_" + Date.now(), text: el.value.trim() });
-  el.value = "";
-  window.renderSchedulesAndCalendar();
-  writeAndSyncStorage().catch(() => {});
-};
-
-window.deleteScheduleItem = function(id) {
-  schedulesState = schedulesState.filter(s => s.id !== id);
-  window.renderSchedulesAndCalendar();
-  writeAndSyncStorage().catch(() => {});
-};
-
 window.renderSchedulesAndCalendar = function() {
   const container = document.getElementById('schedule-list-container');
   if (container) {
@@ -626,21 +653,22 @@ window.handleBuildQuiz = async function() {
   btn.classList.add('hidden'); spinner.classList.remove('hidden');
 
   const countLimit = currentSelectedGenType === 'real' ? 20 : 10;
-  const prompt = `과목:${sub.name}\n범위:${chap.name}\n문항수:${countLimit}\nJSON 데이터 포맷 출제.\n교안:\n${sourceText.substring(0, 15000)}`;
+  const prompt = `과목:${sub.name}\n범위:${chap.name}\n문항수:${countLimit}\nJSON 데이터 규격 균등 출제.\n교안:\n${sourceText.substring(0, 15000)}`;
 
   try {
-    const raw = await geminiModule.callGemini(prompt, "JSON 위원 교수입니다.", true);
+    const raw = await geminiModule.callGemini(prompt, "JSON 교수입니다.", true);
     const parsed = JSON.parse(raw);
     quizSheets.push({
       id: "sheet_" + Date.now(), title: parsed.title || `${sub.name} 맞춤형 평가`,
       subject: sub.name, chapter: chap.name,
       createdDate: new Date().toISOString().split('T')[0], isSolved: false, score: null,
-      questions: parsed.questions.slice(0, countLimit).map((q, i) => ({ id: i + 1, ...q })), type: currentSelectedGenType
+      questions: parsed.questions.slice(0, countLimit).map((q, i) => ({ id: i + 1, ...q })), type: currentSelectedGenType,
+      hasReachedPerfect: false
     });
     await writeAndSyncStorage();
     window.changeDashboardTab('storage');
   } catch (e) { 
-    alert("출제 예외 식별: " + e.message); 
+    alert("출제 예외: " + e.message); 
   } finally {
     btn.classList.remove('hidden'); spinner.classList.add('hidden');
   }
@@ -648,9 +676,9 @@ window.handleBuildQuiz = async function() {
 
 window.checkAttendance = function() {
   const today = new Date().toISOString().split('T')[0];
-  if (lastAttendedDate === today) { alert("오늘의 출석이 마감되었습니다."); return; }
+  if (lastAttendedDate === today) { alert("오늘의 출석 마감 상태입니다."); return; }
   pocketMoney += 500 + (userLevelState.level * 50); lastAttendedDate = today;
-  writeAndSyncStorage().catch(() => {}); window.renderProfileTab(); alert("출석 성과금 적립 완료!");
+  writeAndSyncStorage().catch(() => {}); window.renderProfileTab(); alert("출석 성과금 가산 완료!");
 };
 
 window.spendPocketMoney = function() {
@@ -672,9 +700,6 @@ window.importProgressText = function() {
 };
 window.clearAllDataStorage = function() { if(confirm("포맷하시겠습니까?")) { localStorage.clear(); location.reload(); } };
 
-// ==========================================
-// 🚀 무결성 부트스트랩 스레드 결착 구역
-// ==========================================
 document.addEventListener('DOMContentLoaded', async () => {
   loadStorageFromLocal();
   window.changeDashboardTab('profile');
@@ -692,24 +717,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const apiInput = document.getElementById('api-key-input');
     if (apiInput) apiInput.value = geminiModule.getGeminiKey();
-    window.updateCustomGeminiKey = function() { geminiModule.saveGeminiKey(apiInput.value); alert("인터페이스 세팅 성공"); };
+    window.updateCustomGeminiKey = function() { geminiModule.saveGeminiKey(apiInput.value); alert("인프라 연결 완료"); };
 
     if (authModule.isFirebaseInitialized) {
       authModule.onAuthStateChanged(authModule.auth, async (user) => {
         if (user) {
           window.currentUser = user;
-          
-          // 🔥 [게스트 계정 노출 오류 종결] 로그인 인스턴스 덮어쓰기
           const nameEl = document.getElementById('profile-user-name');
           const emailEl = document.getElementById('profile-user-email');
-          if(nameEl) nameEl.textContent = user.displayName || "구글 연동 사용자";
-          if(emailEl) emailEl.textContent = user.email ? `(${user.email})` : "(클라우드 싱크 가동)";
+          if(nameEl) nameEl.textContent = user.displayName || "구글 연동 계정";
+          if(emailEl) emailEl.textContent = user.email ? `(${user.email})` : "(클라우드 연결 상태)";
           
           const cloudData = await authModule.loadFromCloud(user.uid, customSyncKey).catch(() => null);
           if (cloudData) {
             studySubjects = cloudData.studySubjects || {}; studyMaterials = cloudData.studyMaterials || {}; chaptersState = cloudData.chaptersState || {}; quizSheets = cloudData.quizSheets || []; pocketMoney = cloudData.pocketMoney || 0; moneyHistory = cloudData.moneyHistory || []; userLevelState = cloudData.userLevelState || {level:1,exp:0}; lastAttendedDate = cloudData.lastAttendedDate || ""; schedulesState = cloudData.schedulesState || []; globalMemoText = cloudData.globalMemoText || ""; accumulatedStats = cloudData.accumulatedStats || {winPromoteCount:0,perfectScoreCount:0,totalSolvedCount:0};
             
-            // 로컬 캐시 스냅샷 동시 기입 브리징
             localStorage.setItem('studySubjects_v7', JSON.stringify(studySubjects));
             localStorage.setItem('quizSheets_v7', JSON.stringify(quizSheets));
             localStorage.setItem('pocketMoney_v7', pocketMoney.toString());
@@ -724,16 +746,15 @@ document.addEventListener('DOMContentLoaded', async () => {
           document.getElementById('sync-status-text').textContent = "클라우드 동기화 됨";
         } else {
           window.currentUser = null;
-          document.getElementById('sync-status-text').textContent = "로컬 모드 가동";
+          document.getElementById('sync-status-text').textContent = "로컬 모드";
         }
         window.renderProfileTab();
       });
     }
-
     const authBtn = document.getElementById('auth-action-btn');
     if (authBtn) {
       authBtn.textContent = window.currentUser ? "로그아웃" : "🌐 구글 계정 연동";
-      authBtn.onclick = async () => { if (window.currentUser) { await authModule.logoutUser(); location.reload(); } else { try { await authModule.loginWithGoogle(); location.reload(); } catch(e) { alert("통신 실패: " + e.message); } } };
+      authBtn.onclick = async () => { if (window.currentUser) { await authModule.logoutUser(); location.reload(); } else { try { await authModule.loginWithGoogle(); location.reload(); } catch(e) { alert("인증 오류: " + e.message); } } };
     }
-  } catch (err) { console.warn("모듈 바인딩 프로세스 대기", err); }
+  } catch (err) { console.warn("비동기 모듈 로딩 대기", err); }
 });
